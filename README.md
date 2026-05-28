@@ -251,9 +251,8 @@ npm test -- foo.spec.ts     # Single test file
 ## 📚 Additional Docs
 
 - [Dashboard README](dashboard/README.md) — Full dashboard usage
-- [API Endpoints Catalog](API_ENDPOINTS.md) — All 66 endpoints organized by category
 - [MCP Server Docs](MCP_README.md) — MCP configuration & usage
-- [Implementation Plan](DASHBOARD_PLAN.md) — Dashboard architecture & design decisions
+- [MCP Dashboard Integration Plan](MCP_DASHBOARD_PLAN.md) — Plan for adding an MCP/AI tab to the browser dashboard
 
 ---
 
