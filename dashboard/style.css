@@ -628,6 +628,14 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .tech-chip-inp { width: 100px; font-size: 11px; padding: 1px 4px; border: 1px solid var(--border); border-radius: 3px; }
 
+/* ── Indicator Reference ──────────────────────────────────── */
+.tech-refs { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; background: #fafbfc; font-size: 12px; }
+.tech-refs[open] { padding-bottom: 12px; }
+.tech-refs summary { padding: 4px 0; }
+.tech-refs-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.tech-ref-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: var(--surface); border-radius: 6px; border-left: 3px solid var(--primary); }
+.tech-ref-item strong { font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-secondary); }
+
 /* ── Technical Signals ───────────────────────────────────── */
 .tech-signals { margin-bottom: 12px; }
 .tech-signals-grid {

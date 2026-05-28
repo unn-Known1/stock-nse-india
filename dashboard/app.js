@@ -1373,6 +1373,23 @@ function renderCandles(candles) {
 }
 
 // ── Technical Tab ───────────────────────────────────────────
+const TECH_REFS = {
+  sma: 'Simple Moving Average — average price over N periods. Higher periods = smoother line. Crossovers signal trend changes.',
+  ema: 'Exponential Moving Average — weights recent prices more. Reacts faster than SMA. Common signals: price/MA crossovers.',
+  macd: 'Moving Average Convergence Divergence — trend-following momentum. Signal line crossovers and histogram zero-line crossovers generate signals.',
+  adx: 'Average Directional Index — measures trend strength (not direction). >25 = strong trend, <20 = weak/choppy.',
+  rsi: 'Relative Strength Index — momentum oscillator (0-100). >70 overbought (sell), <30 oversold (buy). Divergences signal reversals.',
+  stoch: 'Stochastic Oscillator — compares close to price range. >80 overbought, <20 oversold. %K/%D crossovers generate signals.',
+  wr: 'Williams %R — momentum oscillator (-100 to 0). Below -80 oversold (buy), above -20 overbought (sell).',
+  cci: 'Commodity Channel Index — measures deviation from statistical mean. >100 overbought, <-100 oversold. Also detects trend strength.',
+  mfi: 'Money Flow Index — volume-weighted RSI. >80 overbought, <20 oversold. Divergences with price signal reversals.',
+  roc: 'Rate of Change — raw momentum: (close[N] - close) / close * 100. Positive = gaining, negative = losing. Extreme values signal reversals.',
+  mom: 'Momentum — close - close[N periods ago]. Rising momentum confirms trend, falling momentum warns of reversal.',
+  bb: 'Bollinger Bands — volatility bands around SMA. Price touching upper band = overextended up, lower = oversold. Squeeze signals breakout.',
+  atr: 'Average True Range — measures market volatility. Higher ATR = wider stops needed. Useful for position sizing and stop placement.',
+  obv: 'On-Balance Volume — cumulative volume based on price direction. Confirms trends: OBV rising with price = strong uptrend. Divergences warn of reversals.',
+}
+
 const TECH_SIGNAL_MAP = {
   rsi: { low: 30, high: 70, label: 'RSI', format: v => v != null ? v.toFixed(1) : '—' },
   stochastic: { low: 20, high: 80, label: 'Stochastic', format: v => v?.k != null ? `${v.k.toFixed(1)}/${v.d.toFixed(1)}` : '—' },
@@ -1589,6 +1606,25 @@ function renderTechTable(data) {
   })
 
   if (!html) html = '<div class="empty-msg">No data for selected indicators</div>'
+
+  // Reference section
+  const activeRefs = []
+  const chipIds = ['tech-sma','tech-ema','tech-macd','tech-adx','tech-rsi','tech-stoch','tech-wr','tech-cci','tech-mfi','tech-roc','tech-mom','tech-bb','tech-atr','tech-obv']
+  const refKeys = ['sma','ema','macd','adx','rsi','stoch','wr','cci','mfi','roc','mom','bb','atr','obv']
+  chipIds.forEach((id, i) => {
+    const el = document.getElementById(id)
+    if (el?.checked && TECH_REFS[refKeys[i]]) {
+      activeRefs.push({ label: el.parentElement.querySelector('.tech-chip-label')?.textContent || refKeys[i].toUpperCase(), desc: TECH_REFS[refKeys[i]] })
+    }
+  })
+  if (activeRefs.length) {
+    html += `<details class="tech-refs" style="margin-top:16px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary)">📖 Indicator Guide (${activeRefs.length})</summary><div class="tech-refs-grid">`
+    activeRefs.forEach(r => {
+      html += `<div class="tech-ref-item"><strong>${r.label}</strong><span>${r.desc}</span></div>`
+    })
+    html += '</div></details>'
+  }
+
   container.innerHTML = html
 }
 
