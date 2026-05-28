@@ -64,8 +64,7 @@ export class MCPClient {
   private availableTools: any[]
   private memoryManager?: MemoryManager
   private config: MCPClientConfig
-  private currentQuery?: string  // Track current query for smarter iteration decisions
-  private allToolsUsed: string[] = []  // Track all tools used across iterations
+  totalQueries = 0
 
   constructor(config: MCPClientConfig = {}) {
     this.config = {
@@ -104,7 +103,7 @@ export class MCPClient {
         )
       }
       const baseURL = process.env.OPENAI_BASE_URL || undefined
-      this.openaiClient = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) })
+      this.openaiClient = new OpenAI({ apiKey, timeout: 60000, maxRetries: 2, ...(baseURL ? { baseURL } : {}) })
     }
     return this.openaiClient
   }
@@ -212,9 +211,9 @@ export class MCPClient {
     } = request
 
     try {
-      // Initialize query tracking for smart iteration decisions
-      this.currentQuery = query
-      this.allToolsUsed = []
+      this.totalQueries++
+      const currentQuery = query
+      const allToolsUsed: string[] = []
       
       // Determine if we should use memory features
       const shouldUseMemory = !!(useMemory && this.config.enableMemory && sessionId)
@@ -375,7 +374,7 @@ export class MCPClient {
           })
           
           // Track all tools (including duplicates) for internal logic
-          this.allToolsUsed.push(...iterationTools)
+          allToolsUsed.push(...iterationTools)
 
           // Capture tool parameters for iteration details
           const toolParameters = message.tool_calls.map(toolCall => ({
@@ -410,13 +409,13 @@ export class MCPClient {
           })
 
           // Check if we should continue iterating
-          if (this.shouldContinueIterating(message, currentIteration, maxIterations)) {
+          if (this.shouldContinueIterating(message, currentIteration, maxIterations, currentQuery, allToolsUsed)) {
             // Add instruction for next iteration with specific guidance
             let nextInstruction = `You now have additional data from iteration ${currentIteration}. `
             
             // Provide specific guidance based on the original query and current context
             if (query.toLowerCase().includes('technical indicators') &&
-              !this.allToolsUsed.includes('get_equity_technical_indicators')) {
+              !allToolsUsed.includes('get_equity_technical_indicators')) {
               nextInstruction += `IMPORTANT: The user specifically asked about technical indicators ` +
                 `for investment decisions. You MUST call get_equity_technical_indicators for several ` +
                 `promising stocks from the data you received. Do not provide investment recommendations ` +
@@ -550,17 +549,17 @@ export class MCPClient {
   /**
    * Determine if iterations should continue based on AI response and context
    */
-  private shouldContinueIterating(message: any, currentIteration: number, maxIterations: number): boolean {
+  private shouldContinueIterating(message: any, currentIteration: number, maxIterations: number, currentQuery: string, allToolsUsed: string[]): boolean {
     // Don't exceed max iterations (save one for final synthesis)
     if (currentIteration >= maxIterations - 1) return false
     
     // Always continue for specific complex query patterns that need multiple steps
-    const originalQuery = this.currentQuery?.toLowerCase() || ''
+    const originalQuery = currentQuery.toLowerCase()
     
     // AGGRESSIVE: For technical indicator investment queries, force continuation until we get technical data
     if (originalQuery.includes('technical indicators') && originalQuery.includes('invest')) {
       // Continue until we've called technical indicators tool OR reached iteration 4
-      if (!this.allToolsUsed.includes('get_equity_technical_indicators') && currentIteration <= 3) {
+      if (!allToolsUsed.includes('get_equity_technical_indicators') && currentIteration <= 3) {
         // Forcing continuation for technical indicators query (iteration ${currentIteration})
         return true
       }
@@ -892,10 +891,7 @@ export class MCPClient {
    */
   async testConnection(): Promise<boolean> {
     try {
-      await this.processQuery({ 
-        query: 'What is the current market status?',
-        useMemory: false
-      })
+      this.getOpenAI()
       return true
     } catch (error) {
       console.error('MCP Client test failed:', error)
@@ -912,12 +908,8 @@ export class MCPClient {
     }
     
     try {
-      await this.processQuery({ 
-        query: 'What is the current market status?', 
-        sessionId,
-        useMemory: true,
-        includeContext: false
-      })
+      this.getOpenAI()
+      this.getMemoryManager().getOrCreateSession(sessionId)
       return true
     } catch (error) {
       console.error('MCP Client with Memory test failed:', error)

@@ -6,9 +6,25 @@ on:
   workflow_dispatch:
 
 jobs:
+  should-skip:
+    name: Check if NSE is closed
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - id: check
+        run: |
+          DAY=$(date +%u)
+          if [ "$DAY" -gt 5 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
+    needs: [should-skip]
+    if: needs.should-skip.outputs.skip == 'false'
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +40,7 @@ jobs:
   notify:
     name: Slack notification
     runs-on: ubuntu-latest
-    needs: [e2e]
+    needs: [should-skip, e2e]
     if: always() && !cancelled()
     env:
       WORKFLOW_RESULT: ${{ needs.e2e.result }}

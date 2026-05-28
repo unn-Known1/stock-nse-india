@@ -8,7 +8,15 @@
 const PROBE_PORTS = ['', '3000', '3001', '3002', '3003']
 let API_BASE = ''
 
+const urlParams = new URLSearchParams(window.location.search)
+const apiBaseOverride = urlParams.get('api_base')
+if (apiBaseOverride) API_BASE = apiBaseOverride
+
+let searchController = null
+const intervalIds = []
+
 async function findApiBase() {
+  if (API_BASE) return true
   // If served from same origin as API, relative URLs work
   const probeUrls = PROBE_PORTS.map(p => {
     if (!p) return { port: p, url: window.location.origin }
@@ -56,6 +64,10 @@ function cacheGet(url) {
 
 function cacheSet(url, data) {
   cache.set(url, { data, expiry: Date.now() + getTTL(url) })
+  if (cache.size > 500) {
+    const firstKey = cache.keys().next().value
+    if (firstKey) cache.delete(firstKey)
+  }
 }
 
 function invalidateCache(url) { cache.delete(url) }
@@ -69,14 +81,28 @@ async function apiFetch(url, options = {}) {
     if (cached) return cached
   }
 
-  const res = await fetch(`${API_BASE}${url}`, options)
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`${res.status}${text ? ': ' + text.replace(/\[NSE API\]/g, 'NSE') : ''}`)
+  let lastError
+  const maxRetries = 3
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}${url}`, options)
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(`${res.status}${text ? ': ' + text.replace(/\[NSE API\]/g, 'NSE') : ''}`)
+      }
+      const data = await res.json()
+      if (isGet) cacheSet(url, data)
+      return data
+    } catch (err) {
+      if (isGet && err instanceof TypeError && attempt < maxRetries) {
+        lastError = err
+        await new Promise(r => setTimeout(r, 1000))
+        continue
+      }
+      throw err
+    }
   }
-  const data = await res.json()
-  if (isGet) cacheSet(url, data)
-  return data
+  throw lastError || new Error('Request failed')
 }
 
 // ── Data Normalizers ───────────────────────────────────────
@@ -214,8 +240,7 @@ function setupTableFilter(inputId, tableContainerId) {
 // ── Exports ─────────────────────────────────────────────────
 function exportCSV(containerId, filename) {
   const container = document.getElementById(containerId)
-  if (!container?.dataset.fullData) return
-  const raw = JSON.parse(container.dataset.fullData)
+  const raw = JSON.parse(container.dataset.fullData || '[]')
   const rows = normalizeRows(raw).map(r => flattenRow(r))
   const headers = [...new Set(rows.flatMap(Object.keys))]
   const csv = [
@@ -227,8 +252,7 @@ function exportCSV(containerId, filename) {
 
 function exportJSON(containerId, filename) {
   const container = document.getElementById(containerId)
-  if (!container?.dataset.fullData) return
-  download(container.dataset.fullData, `${filename}.json`, 'application/json')
+  download(container.dataset.fullData || '{}', `${filename}.json`, 'application/json')
 }
 
 function download(content, filename, mime) {
@@ -262,7 +286,7 @@ function setupAutocomplete(inputId, suggestionsId, onSelect) {
     const matches = allSymbolsCache.filter(s => s.toUpperCase().includes(val)).slice(0, 20)
     highlightedIdx = -1
     container.innerHTML = matches.map((s, i) =>
-      `<div class="suggestion" data-idx="${i}" data-value="${s}">${s}</div>`
+      `<div class="suggestion" data-idx="${i}" data-value="${escapeHtml(s)}">${escapeHtml(s)}</div>`
     ).join('')
 
     container.querySelectorAll('.suggestion').forEach(el => {
@@ -359,8 +383,11 @@ function initMarketTab() {
       moAutoRefreshTimer = setInterval(() => {
         invalidateCache('/api/marketStatus')
         invalidateCache('/api/allIndices')
+        invalidateCache('/api/holidays?type=trading')
+        invalidateCache('/api/marketTurnover')
         loadMarketData()
       }, 30000)
+      intervalIds.push(moAutoRefreshTimer)
     }
   })
 
@@ -472,7 +499,7 @@ function renderKeyIndices(data) {
   container.innerHTML = allKey.map(i => {
     const chgColor = colorClass(i.variation)
     return `<div class="ki-card">
-      <div class="ki-name">${i.index}</div>
+      <div class="ki-name">${escapeHtml(i.index)}</div>
       <div class="ki-value ${chgColor}">${formatNum(i.last)}</div>
       <div class="ki-change ${chgColor}">${arrow(i.variation)} ${formatNum(i.variation)} (${formatNum(i.percentChange)}%)</div>
       <div class="ki-meta">O:${formatNum(i.open)} H:${formatNum(i.high)} L:${formatNum(i.low)}</div>
@@ -501,7 +528,7 @@ function renderAllIndices(data) {
       ? `<span class="up">${i.advances}</span>/<span class="down">${i.declines}</span>${i.unchanged ? '/'+i.unchanged : ''}`
       : '—'
     return `<tr>
-      <td><strong>${i.index}</strong></td>
+      <td><strong>${escapeHtml(i.index)}</strong></td>
       <td class="num ${chgColor}">${formatNum(i.last)}</td>
       <td class="num ${chgColor}">${arrow(i.variation)}${formatNum(i.variation)}</td>
       <td class="num ${chgColor}">${formatNum(i.percentChange)}%</td>
@@ -555,9 +582,9 @@ function renderHolidays(data) {
     html += upcoming.map(h => {
       const days = Math.ceil((h.dateObj - now) / (1000*60*60*24))
       return `<div class="holiday-row">
-        <span class="holiday-date">${h.tradingDate}</span>
-        <span class="holiday-weekday">${h.weekDay}</span>
-        <span class="holiday-desc">${h.description}</span>
+        <span class="holiday-date">${escapeHtml(h.tradingDate)}</span>
+        <span class="holiday-weekday">${escapeHtml(h.weekDay)}</span>
+        <span class="holiday-desc">${escapeHtml(h.description)}</span>
         <span class="holiday-days">${days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days + 'd'}</span>
       </div>`
     }).join('')
@@ -567,9 +594,9 @@ function renderHolidays(data) {
   let tableHtml = `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Day</th><th>Description</th></tr></thead><tbody>`
   tableHtml += parsed.map(h =>
     `<tr class="${h.isPast ? 'holiday-past' : ''}">
-      <td>${h.tradingDate}</td>
-      <td>${h.weekDay}</td>
-      <td>${h.description}</td>
+      <td>${escapeHtml(h.tradingDate)}</td>
+      <td>${escapeHtml(h.weekDay)}</td>
+      <td>${escapeHtml(h.description)}</td>
     </tr>`
   ).join('')
   tableHtml += `</tbody></table></div>`
@@ -622,7 +649,7 @@ function renderRecentStocks() {
   container.style.display = 'flex'
   container.innerHTML = '<span class="recents-label">Recent:</span>' +
     RECENT_STOCKS.map(s =>
-      `<button class="btn btn-sm recent-chip" data-symbol="${s}">${s}</button>`
+      `    <button class="btn btn-sm recent-chip" data-symbol="${escapeHtml(s)}">${escapeHtml(s)}</button>`
     ).join('')
   container.querySelectorAll('.recent-chip').forEach(el => {
     el.addEventListener('click', () => {
@@ -636,18 +663,21 @@ async function loadStockData(symbol) {
   if (!symbol) return
   addRecentStock(symbol)
 
+  if (searchController) searchController.abort()
+  searchController = new AbortController()
+  const signal = searchController.signal
+
   // Show loading
   ;['stock-summary','stock-details','stock-price','stock-trade','stock-intraday'].forEach(id => {
     const el = document.getElementById(id)
-    if (el && el.classList.contains('empty-msg')) return
     if (id === 'stock-summary') el.innerHTML = '<div class="loading-msg"><span class="spinner"></span></div>'
     else el.innerHTML = '<span class="spinner"></span> Loading...'
   })
 
   const [detailRes, tradeRes, intradayRes] = await Promise.allSettled([
-    apiFetch(`/api/equity/${symbol}`).then(d => ({ id: 'detail', data: d })),
-    apiFetch(`/api/equity/tradeInfo/${symbol}`).then(d => ({ id: 'trade', data: d })),
-    apiFetch(`/api/equity/intraday/${symbol}`).then(d => ({ id: 'intraday', data: d })),
+    apiFetch(`/api/equity/${symbol}`, { signal }).then(d => ({ id: 'detail', data: d })),
+    apiFetch(`/api/equity/tradeInfo/${symbol}`, { signal }).then(d => ({ id: 'trade', data: d })),
+    apiFetch(`/api/equity/intraday/${symbol}`, { signal }).then(d => ({ id: 'intraday', data: d })),
   ])
 
   if (detailRes.status === 'fulfilled') {
@@ -808,7 +838,7 @@ function renderOrderBook(data, symbol) {
   if (bulk.length) {
     html += `<details class="ob-deals"><summary>Block / Bulk Deals (${bulk.length})</summary>`
     html += `<div class="table-wrap"><table><thead><tr><th>Price</th><th>Qty</th><th>Type</th></tr></thead><tbody>`
-    html += bulk.map(d => `<tr><td>${formatNum(d.price)}</td><td>${formatNum(d.quantity)}</td><td>${d.type || ''}</td></tr>`).join('')
+    html += bulk.map(d => `<tr><td>${formatNum(d.price)}</td><td>${formatNum(d.quantity)}</td><td>${escapeHtml(d.type || '')}</td></tr>`).join('')
     html += `</tbody></table></div></details>`
   }
 
@@ -844,10 +874,10 @@ function renderIntraday(data, symbol) {
   const chg = last - first
   const range = high - low
 
-  // Compute volume from third element if present
-  const vols = points.filter(p => p.time.getTime()).map(p => p.time)
-  const firstTime = vols[0]
-  const lastTime = vols[vols.length - 1]
+  // Compute duration from timestamps
+  const times = points.filter(p => p.time.getTime()).map(p => p.time)
+  const firstTime = times[0]
+  const lastTime = times[times.length - 1]
   const duration = lastTime && firstTime ? Math.round((lastTime - firstTime) / 60000) : 0
 
   // Summary stats
@@ -899,7 +929,7 @@ function populateIndexSelect() {
       indexNamesCache.map(i => {
         const key = Array.isArray(i) ? i[0] : i.key || i
         const label = Array.isArray(i) ? i[1] || i[0] : i.index || i.key || i
-        return `<option value="${key}">${label}</option>`
+        return `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`
       }).join('')
   })
 }
@@ -1042,7 +1072,7 @@ function renderGainersLosers(data) {
     html += gainers.slice(0, 10).map(s => {
       const sym = s.symbol || s.tradingSymbol || ''
       const chg = s.perChange || s.percChange || s.pChange || 0
-      return `<div class="ob-row"><span>${sym}</span><span class="num up">${formatNum(s.lastPrice || s.ltp)}</span><span class="num up">+${formatNum(chg)}%</span></div>`
+      return `<div class="ob-row"><span>${escapeHtml(sym)}</span><span class="num up">${formatNum(s.lastPrice || s.ltp)}</span><span class="num up">+${formatNum(chg)}%</span></div>`
     }).join('')
   } else {
     html += '<div class="empty-msg" style="padding:12px">—</div>'
@@ -1056,7 +1086,7 @@ function renderGainersLosers(data) {
     html += losers.slice(0, 10).map(s => {
       const sym = s.symbol || s.tradingSymbol || ''
       const chg = s.perChange || s.percChange || s.pChange || 0
-      return `<div class="ob-row"><span>${sym}</span><span class="num down">${formatNum(s.lastPrice || s.ltp)}</span><span class="num down">${formatNum(chg)}%</span></div>`
+      return `<div class="ob-row"><span>${escapeHtml(sym)}</span><span class="num down">${formatNum(s.lastPrice || s.ltp)}</span><span class="num down">${formatNum(chg)}%</span></div>`
     }).join('')
   } else {
     html += '<div class="empty-msg" style="padding:12px">—</div>'
@@ -1084,7 +1114,7 @@ function renderMostActive(data) {
     html += `<div class="gl-side"><div class="gl-title">By Volume</div><div class="ob-row ob-head"><span>Symbol</span><span>Price</span><span>Volume</span></div>`
     html += byVol.slice(0, 10).map(s => {
       const chgColor = colorClass(s.perChange || s.percChange || s.pChange)
-      return `<div class="ob-row"><span>${s.symbol || s.tradingSymbol || ''}</span><span class="num ${chgColor}">${formatNum(s.lastPrice || s.ltp)}</span><span class="num">${formatNum(s.totalTradedVolume || s.volume)}</span></div>`
+      return `<div class="ob-row"><span>${escapeHtml(s.symbol || s.tradingSymbol || '')}</span><span class="num ${chgColor}">${formatNum(s.lastPrice || s.ltp)}</span><span class="num">${formatNum(s.totalTradedVolume || s.volume)}</span></div>`
     }).join('')
     html += '</div>'
   }
@@ -1093,7 +1123,7 @@ function renderMostActive(data) {
     html += `<div class="gl-side"><div class="gl-title">By Value</div><div class="ob-row ob-head"><span>Symbol</span><span>Price</span><span>Value</span></div>`
     html += byVal.slice(0, 10).map(s => {
       const chgColor = colorClass(s.perChange || s.percChange || s.pChange)
-      return `<div class="ob-row"><span>${s.symbol || s.tradingSymbol || ''}</span><span class="num ${chgColor}">${formatNum(s.lastPrice || s.ltp)}</span><span class="num">${formatNum(s.totalTradedValue || s.value)}</span></div>`
+      return `<div class="ob-row"><span>${escapeHtml(s.symbol || s.tradingSymbol || '')}</span><span class="num ${chgColor}">${formatNum(s.lastPrice || s.ltp)}</span><span class="num">${formatNum(s.totalTradedValue || s.value)}</span></div>`
     }).join('')
     html += '</div>'
   }
@@ -1175,7 +1205,7 @@ async function loadOptionsData(type, key) {
 
     // Extract unique expiries
     const expiries = [...new Set(records.map(r => r.expiryDate))].sort((a, b) => {
-      const parseD = (s) => { const p = s.split('-'); const ms={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11}; return new Date(parseInt(p[2]), ms[p[1]], parseInt(p[0])) }
+      const parseD = (s) => { const p = s.split('-'); const ms={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11}; const month = ms[p[1]]; return new Date(parseInt(p[2]), month !== undefined ? month : new Date(s).getMonth(), parseInt(p[0])) }
       return parseD(a) - parseD(b)
     })
 
@@ -1850,6 +1880,7 @@ function startMCPContextPolling(sessionId) {
   }
   pollFn()
   mcpPollInterval = setInterval(pollFn, 10000)
+  intervalIds.push(mcpPollInterval)
 }
 
 function stopMCPContextPolling() {
@@ -1881,6 +1912,7 @@ function startMCPExpiryCountdown(expiresAt) {
   }
   tick()
   mcpExpiryInterval = setInterval(tick, 1000)
+  intervalIds.push(mcpExpiryInterval)
 }
 
 function stopMCPExpiryCountdown() {
@@ -1942,7 +1974,7 @@ function renderMCPSessions(sessions) {
     const relTime = lastUsed ? formatRelativeTime(lastUsed) : '—'
     return `<div class="mcp-session-item ${isActive ? 'active' : ''}">
       <div class="mcp-session-item-info">
-        <span class="mcp-session-item-id">${sid.slice(0, 12)}...</span>
+        <span class="mcp-session-item-id">${escapeHtml(sid.slice(0, 12))}...</span>
         <span class="mcp-session-item-meta">${msgCount} msgs · ${relTime}</span>
       </div>
       <div class="mcp-session-item-actions">
@@ -1964,6 +1996,7 @@ function renderMCPSessions(sessions) {
 
 function formatRelativeTime(dateVal) {
   const date = dateVal instanceof Date ? dateVal : new Date(dateVal)
+  if (isNaN(date.getTime())) return ''
   const diff = Date.now() - date.getTime()
   const secs = Math.floor(diff / 1000)
   if (secs < 60) return 'just now'
@@ -2380,4 +2413,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadMCPTools()
     loadMCPSessions()
   }, { once: true })
+
+  window.addEventListener('unhandledrejection', event => {
+    showError('mo-key-indices', event.reason)
+  })
+
+  window.addEventListener('beforeunload', () => {
+    intervalIds.forEach(id => clearInterval(id))
+  })
 })

@@ -37,6 +37,10 @@ export class MCPServer {
     process.stdin.on('end', () => {
       process.exit(0)
     })
+
+    process.on('SIGTERM', () => {
+      process.exit(0)
+    })
   }
 
   private async handleMessage(message: string) {
@@ -149,7 +153,24 @@ export class MCPServer {
 
   private async handleToolCall(params: any) {
     const { name, arguments: args } = params
-    const result = await handleMCPToolCall(nseClient, name, args)
+    let result
+    try {
+      result = await Promise.race([
+        handleMCPToolCall(nseClient, name, args),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Tool call timed out')), 30000))
+      ])
+    } catch (err) {
+      console.error(`Tool call "${name}" failed:`, err instanceof Error ? err.message : String(err))
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ error: err instanceof Error ? err.message : String(err) }, null, 2),
+          },
+        ],
+        isError: true,
+      }
+    }
 
     return {
       content: [

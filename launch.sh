@@ -25,10 +25,16 @@ if [ ! -d build ]; then
 fi
 
 PORT="${PORT:-3000}"
-if lsof -ti:"$PORT" &>/dev/null 2>&1; then
-  echo "Port $PORT is in use. Killing process..."
-  lsof -ti:"$PORT" | xargs kill -9 2>/dev/null || true
-  sleep 1
+PID=$(lsof -ti:"$PORT" 2>/dev/null || true)
+if [ -n "$PID" ]; then
+  PROC_NAME=$(ps -p "$PID" -o comm= 2>/dev/null || echo "")
+  if echo "$PROC_NAME" | grep -qi "node"; then
+    echo "Port $PORT is in use by a Node.js process (PID: $PID). Killing..."
+    kill -9 "$PID" 2>/dev/null || true
+    sleep 1
+  else
+    echo "Port $PORT is in use by non-Node process ($PROC_NAME, PID: $PID). Skipping."
+  fi
 fi
 
 echo "Starting server on http://localhost:$PORT ..."

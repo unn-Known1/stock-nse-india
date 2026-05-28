@@ -213,7 +213,7 @@ cp .env.example .env
 | `PORT` | `3000` | Server port |
 | `HOST_URL` | `http://localhost:3000` | Public URL |
 | `NODE_ENV` | `development` | Environment |
-| `CORS_ORIGINS` | `*` | Allowed origins (comma-separated) |
+| `CORS_ORIGINS` | `[]` | Allowed origins (comma-separated) |
 | `OPENAI_API_KEY` | — | **Required for AI Assistant tab** — OpenAI key (`sk-…`) or provider key (e.g. `nvapi-…` for NVIDIA NIM) |
 | `OPENAI_BASE_URL` | — | OpenAI-compatible base URL — leave blank for OpenAI; set for other providers (e.g. `https://integrate.api.nvidia.com/v1`) |
 | `OPENAI_MODEL` | `gpt-4o-mini` | Model ID to use — must match what the provider expects (e.g. `moonshotai/kimi-k2-instruct`) |

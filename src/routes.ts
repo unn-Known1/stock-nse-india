@@ -11,10 +11,12 @@ import { TechnicalIndicatorOptions } from './interface'
 import { formatLatestIndicators, formatAllIndicators } from './indicators-formatter'
 
 function validateApiKey(key: string): boolean {
-    // When a custom base URL is configured, any non-empty key is valid (compatible
-    // providers such as Ollama, LM Studio, vLLM, Groq, etc. use arbitrary key formats)
-    if (process.env.OPENAI_BASE_URL) return key.length > 0
+    if (process.env.OPENAI_BASE_URL) return key.length >= 8
     return /^sk-[A-Za-z0-9]{20,}$/.test(key)
+}
+
+function isValidSymbol(symbol: string): boolean {
+    return /^[A-Z0-9]{1,20}$/.test(symbol)
 }
 
 const mainRouter: Router = Router()
@@ -361,7 +363,11 @@ mainRouter.get('/api/allSymbols', async (_req, res) => {
  */
 mainRouter.get('/api/equity/series/:symbol', async (req, res) => {
     try {
-        res.json(await nseIndia.getEquitySeries(req.params.symbol))
+        const { symbol } = req.params;
+        if (!isValidSymbol(symbol.toUpperCase())) {
+            return res.status(400).json({ error: 'Invalid symbol format' })
+        }
+        res.json(await nseIndia.getEquitySeries(symbol))
     } catch (error) {
         sendRouteError(res, error)
     }
@@ -392,7 +398,11 @@ mainRouter.get('/api/equity/series/:symbol', async (req, res) => {
  */
 mainRouter.get('/api/equity/tradeInfo/:symbol', async (req, res) => {
     try {
-        res.json(await nseIndia.getEquityTradeInfo(req.params.symbol))
+        const { symbol } = req.params;
+        if (!isValidSymbol(symbol.toUpperCase())) {
+            return res.status(400).json({ error: 'Invalid symbol format' })
+        }
+        res.json(await nseIndia.getEquityTradeInfo(symbol))
     } catch (error) {
         sendRouteError(res, error)
     }
@@ -423,7 +433,11 @@ mainRouter.get('/api/equity/tradeInfo/:symbol', async (req, res) => {
  */
 mainRouter.get('/api/equity/corporateInfo/:symbol', async (req, res) => {
     try {
-        res.json(await nseIndia.getEquityCorporateInfo(req.params.symbol))
+        const { symbol } = req.params;
+        if (!isValidSymbol(symbol.toUpperCase())) {
+            return res.status(400).json({ error: 'Invalid symbol format' })
+        }
+        res.json(await nseIndia.getEquityCorporateInfo(symbol))
     } catch (error) {
         sendRouteError(res, error)
     }
@@ -454,7 +468,11 @@ mainRouter.get('/api/equity/corporateInfo/:symbol', async (req, res) => {
  */
 mainRouter.get('/api/equity/options/:symbol', async (req, res) => {
     try {
-        res.json(await nseIndia.getEquityOptionChain(req.params.symbol))
+        const { symbol } = req.params;
+        if (!isValidSymbol(symbol.toUpperCase())) {
+            return res.status(400).json({ error: 'Invalid symbol format' })
+        }
+        res.json(await nseIndia.getEquityOptionChain(symbol))
     } catch (error) {
         sendRouteError(res, error)
     }
@@ -486,6 +504,9 @@ mainRouter.get('/api/equity/options/:symbol', async (req, res) => {
 mainRouter.get('/api/equity/intraday/:symbol', async (req, res) => {
     try {
         const { symbol } = req.params;
+        if (!isValidSymbol(symbol.toUpperCase())) {
+            return res.status(400).json({ error: 'Invalid symbol format' })
+        }
         const data = await nseIndia.getEquityIntradayData(symbol);
         res.json(data);
     } catch (error) {
@@ -532,6 +553,10 @@ mainRouter.get('/api/equity/intraday/:symbol', async (req, res) => {
  */
 mainRouter.get('/api/equity/historical/:symbol', async (req, res) => {
     try {
+        const { symbol } = req.params;
+        if (!isValidSymbol(symbol.toUpperCase())) {
+            return res.status(400).json({ error: 'Invalid symbol format' })
+        }
         const dateStart = req.query.dateStart as string
         const dateEnd = req.query.dateEnd as string
         if (dateStart) {
@@ -542,12 +567,12 @@ mainRouter.get('/api/equity/historical/:symbol', async (req, res) => {
                     start,
                     end
                 }
-                res.json(await nseIndia.getEquityHistoricalData(req.params.symbol, range))
+                res.json(await nseIndia.getEquityHistoricalData(symbol, range))
             } else {
                 res.status(400).json({ error: 'Invalid date format. Please use the format (YYYY-MM-DD)' })
             }
         } else {
-            res.json(await nseIndia.getEquityHistoricalData(req.params.symbol))
+            res.json(await nseIndia.getEquityHistoricalData(symbol))
         }
     } catch (error) {
         sendRouteError(res, error)
@@ -744,6 +769,9 @@ mainRouter.get('/api/equity/historical/:symbol', async (req, res) => {
 mainRouter.get('/api/equity/technicalIndicators/:symbol', async (req, res) => {
     try {
         const { symbol } = req.params
+        if (!isValidSymbol(symbol.toUpperCase())) {
+            return res.status(400).json({ error: 'Invalid symbol format' })
+        }
         const {
             period,
             smaPeriods,
@@ -822,6 +850,9 @@ mainRouter.get('/api/equity/technicalIndicators/:symbol', async (req, res) => {
 mainRouter.get('/api/equity/:symbol', async (req, res) => {
     try {
         const { symbol } = req.params;
+        if (!isValidSymbol(symbol.toUpperCase())) {
+            return res.status(400).json({ error: 'Invalid symbol format' })
+        }
         const data = await nseIndia.getEquityDetails(symbol);
         res.json(data);
     } catch (error) {
@@ -1167,9 +1198,17 @@ mainRouter.get('/api/charts/equity-historical-data', async (req, res) => {
             timeInterval = '5'
         } = req.query
 
-        // Validate required parameters
-        if (!symbol) {
-            return res.status(400).json({ error: 'Missing required parameter: symbol' })
+        if (!symbol || typeof symbol !== 'string' || !isValidSymbol(symbol.toUpperCase())) {
+            return res.status(400).json({ error: 'Missing or invalid symbol parameter' })
+        }
+        if (chartType && !['I', 'D'].includes(chartType as string)) {
+            return res.status(400).json({ error: 'chartType must be I or D' })
+        }
+        if (timeInterval) {
+            const interval = parseInt(timeInterval as string, 10)
+            if (!Number.isInteger(interval) || interval <= 0) {
+                return res.status(400).json({ error: 'timeInterval must be a positive integer' })
+            }
         }
         // Call the charting method
         const parseChartDateParam = (value: unknown): Date => {
@@ -1451,18 +1490,28 @@ mainRouter.post('/api/mcp/query', async (req, res) => {
             })
         }
 
+        if (temperature !== undefined && (typeof temperature !== 'number' || temperature < 0 || temperature > 2)) {
+            return res.status(400).json({ error: 'temperature must be a number between 0 and 2' })
+        }
+        if (max_tokens !== undefined && (!Number.isInteger(max_tokens) || max_tokens <= 0)) {
+            return res.status(400).json({ error: 'max_tokens must be a positive integer' })
+        }
+        if (maxIterations !== undefined && (!Number.isInteger(maxIterations) || maxIterations <= 0)) {
+            return res.status(400).json({ error: 'maxIterations must be a positive integer' })
+        }
+
         // Generate sessionId if not provided to enable memory features
         const sessionId = providedSessionId || `auto_session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
         const apiKey = process.env.OPENAI_API_KEY
         if (!apiKey) {
             return res.status(500).json({
-                error: 'API key not configured. Please set OPENAI_API_KEY environment variable.'
+                error: 'API key not configured.'
             })
         }
         if (!validateApiKey(apiKey)) {
             return res.status(500).json({
-                error: 'API key is invalid. For compatible providers, also set OPENAI_BASE_URL.'
+                error: 'API key is invalid.'
             })
         }
 
@@ -1576,7 +1625,7 @@ mainRouter.get('/api/mcp/test', async (_req, res) => {
         if (!testApiKey) {
             return res.status(500).json({
                 status: 'error',
-                message: 'API key not configured. Set OPENAI_API_KEY environment variable.',
+                message: 'API key not configured.',
                 openaiConfigured: false,
                 timestamp: new Date().toISOString()
             })
@@ -1584,7 +1633,7 @@ mainRouter.get('/api/mcp/test', async (_req, res) => {
         if (!validateApiKey(testApiKey)) {
             return res.status(500).json({
                 status: 'error',
-                message: 'API key is invalid. For compatible providers also set OPENAI_BASE_URL.',
+                message: 'API key is invalid.',
                 openaiConfigured: false,
                 timestamp: new Date().toISOString()
             })
@@ -1596,8 +1645,6 @@ mainRouter.get('/api/mcp/test', async (_req, res) => {
             res.json({
                 status: 'ok',
                 openaiConfigured: true,
-                baseURL: process.env.OPENAI_BASE_URL || null,
-                model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
                 message: 'MCP client is working correctly',
                 timestamp: new Date().toISOString()
             })
@@ -1951,8 +1998,12 @@ mainRouter.get('/api/mcp/session/:sessionId/export', async (req, res) => {
  *       200:
  *         description: Cleanup completed successfully
  */
-mainRouter.post('/api/mcp/cleanup', async (_req, res) => {
+mainRouter.post('/api/mcp/cleanup', async (req, res) => {
     try {
+        const apiKey = req.headers['x-api-key'] as string || process.env.OPENAI_API_KEY
+        if (!apiKey || !validateApiKey(apiKey)) {
+            return res.status(401).json({ error: 'Invalid or missing API key' })
+        }
         getMcpClient().cleanupExpiredSessions()
 
         res.json({
@@ -2049,6 +2100,10 @@ mainRouter.get('/api/mcp/session/:sessionId/context-stats', async (req, res) => 
  */
 mainRouter.post('/api/mcp/session/:sessionId/summarize', async (req, res) => {
     try {
+        const apiKey = req.headers['x-api-key'] as string || process.env.OPENAI_API_KEY
+        if (!apiKey || !validateApiKey(apiKey)) {
+            return res.status(401).json({ error: 'Invalid or missing API key' })
+        }
         const { sessionId } = req.params
         const summary = await getMcpClient().forceContextSummarization(sessionId)
 

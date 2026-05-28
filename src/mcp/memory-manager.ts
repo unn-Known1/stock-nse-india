@@ -113,7 +113,7 @@ export class MemoryManager {
         )
       }
       this.contextSummarizer = new ContextSummarizer(
-        new OpenAI({ apiKey }),
+        new OpenAI({ apiKey, timeout: 60000, maxRetries: 2, baseURL: process.env.OPENAI_BASE_URL || undefined }),
         this.config.contextWindowConfig
       )
     }
@@ -124,6 +124,7 @@ export class MemoryManager {
    * Create or get existing user session
    */
   getOrCreateSession(sessionId: string, userId?: string): UserSession {
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(sessionId)) throw new Error('Invalid session ID')
     if (!this.sessions.has(sessionId)) {
       const session: UserSession = {
         sessionId,
@@ -305,7 +306,7 @@ export class MemoryManager {
         timestamp: new Date().toISOString(),
         originalMessageCount: messages.length,
         summarizedMessageCount: optimizedContext.messages.length,
-        originalMessages: messages, // Store original messages before summarization
+        originalMessages: [],
         summary: optimizedContext.summary!,
         tokensSaved: tokensSaved,
         triggerReason: `Token threshold exceeded: ${tokensBefore.totalTokens} > ` +
@@ -489,9 +490,8 @@ export class MemoryManager {
         this.cleanupExpiredSessions()
       }
     } catch (error: any) {
-      // If file doesn't exist, start fresh silently; otherwise log a warning
       if (error?.code !== 'ENOENT') {
-        console.warn('Failed to load memory from file, starting with empty memory:', error)
+        console.warn('Failed to load memory:', error.message)
       }
     }
   }

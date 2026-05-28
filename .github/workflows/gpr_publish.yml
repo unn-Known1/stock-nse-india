@@ -11,16 +11,16 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: "20.x"
-          registry-url: "https://npm.pkg.github.com/hi-imcodeman"
+          registry-url: "https://npm.pkg.github.com/unn-Known1"
           # Defaults to the user or organization that owns the workflow file
-          scope: "@hi-imcodeman"
+          scope: "@unn-Known1"
       - run: npm install
       - run: npm run gpr-setup
       - run: npm run build
       # Publish to GitHub Packages
       - run: npm publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.IMCODEMAN_PACKAGE_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
     name: Slack notification

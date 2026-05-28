@@ -138,6 +138,12 @@ export class NseIndia {
     private preOpenCache?: { data: PreOpenMarketData; expiry: number }
     private capitalMarketTypeCache?: { type: string; expiry: number }
 
+    invalidateCaches(): void {
+      this.symbolInfoCache = null
+      this.sortedSymbolsCache = null
+      this.preOpenCache = undefined
+    }
+
     private resetNseClient(): void {
         this.nseJar = new CookieJar()
         this.nseClient.defaults.jar = this.nseJar
@@ -195,14 +201,13 @@ export class NseIndia {
                 }
             })
         } catch (error) {
-            // Warm-up is best-effort; NSE often returns 403/502/503 for HTML pages under load.
             if (axios.isAxiosError(error)) {
                 const status = error.response?.status
                 if (status === 403 || status === 502 || status === 503) {
                     return
                 }
             }
-            throw this.toHttpError(error)
+            console.warn('Warm-up failed:', this.toHttpError(error).message)
         }
     }
 
@@ -230,7 +235,7 @@ export class NseIndia {
 
     private async bootstrapNseSession(): Promise<string> {
         this.userAgent = new UserAgent().toString()
-        await this.nseClient.get(`${this.baseUrl}/`, {
+        const response = await this.nseClient.get(`${this.baseUrl}/`, {
             headers: {
                 'User-Agent': this.userAgent,
                 Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -239,6 +244,7 @@ export class NseIndia {
                 Connection: 'keep-alive'
             }
         })
+        if (!response.status || response.status !== 200) throw new Error('Failed to establish NSE session')
         return this.nseJar.getCookieString(this.baseUrl)
     }
 
@@ -756,25 +762,33 @@ export class NseIndia {
             }
         }
         const dateRanges = getDateRangeChunks(range.start, range.end, 66)
-        const promises = dateRanges.map(async (dateRange) => {
-            const url = `/api/NextApi/apiClient/GetQuoteApi?functionName=getHistoricalTradeData` +
-                `&symbol=${encodeURIComponent(symbol.toUpperCase())}` +
-                `&series=${encodeURIComponent(activeSeries)}` +
-                `&fromDate=${dateRange.start}&toDate=${dateRange.end}`
-            const response = await this.getDataByEndpoint(url)
-            // New API returns a direct array, wrap it in EquityHistoricalData structure for backward compatibility
-            /* istanbul ignore next */
-            return {
-                data: Array.isArray(response) ? response : [],
-                meta: {
-                    series: [activeSeries],
-                    fromDate: dateRange.start,
-                    toDate: dateRange.end,
-                    symbols: [symbol.toUpperCase()]
-                }
-            }
-        })
-        return Promise.all(promises)
+        const results: EquityHistoricalData[] = []
+        for (let i = 0; i < dateRanges.length; i += 5) {
+            const batch = dateRanges.slice(i, i + 5)
+            const batchResults = await Promise.all(
+                batch.map(dateRange => this.limit(async () => {
+                    const url = `/api/NextApi/apiClient/GetQuoteApi?functionName=getHistoricalTradeData` +
+                        `&symbol=${encodeURIComponent(symbol.toUpperCase())}` +
+                        `&series=${encodeURIComponent(activeSeries)}` +
+                        `&fromDate=${dateRange.start}&toDate=${dateRange.end}`
+                    const response = await this.getDataByEndpoint(url)
+                    if (!Array.isArray(response)) {
+                        throw new Error('Unexpected historical data format')
+                    }
+                    return {
+                        data: response,
+                        meta: {
+                            series: [activeSeries],
+                            fromDate: dateRange.start,
+                            toDate: dateRange.end,
+                            symbols: [symbol.toUpperCase()]
+                        }
+                    }
+                }))
+            )
+            results.push(...batchResults)
+        }
+        return results
     }
     /**
      * 
@@ -786,11 +800,10 @@ export class NseIndia {
             `/api/NextApi/apiClient/GetQuoteApi?functionName=histTradeDataSeries` +
             `&symbol=${encodeURIComponent(symbol.toUpperCase())}`
         )
-        // New API returns a direct array, wrap it in SeriesData structure for backward compatibility
-        /* istanbul ignore next */
-        return {
-            data: Array.isArray(response) ? response : []
+        if (!Array.isArray(response)) {
+            throw new Error('Invalid series data received')
         }
+        return { data: response }
     }
     /**
      * 
@@ -832,7 +845,7 @@ export class NseIndia {
         /* istanbul ignore next */
         const data = response.data || response
         if (!isIntradayDataShape(data)) {
-            console.warn('getIndexIntradayData: response does not match IntradayData shape for index', index)
+            throw new Error('Index intraday data returned unexpected shape')
         }
         return data
     }

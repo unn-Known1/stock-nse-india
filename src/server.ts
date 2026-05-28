@@ -17,6 +17,37 @@ import path from 'path';
 import { mainRouter } from './routes'
 import cors from 'cors';
 
+function validateConfig(): void {
+  const portNum = parseInt(process.env.PORT || '3000', 10)
+  if (Number.isNaN(portNum) || portNum < 1 || portNum > 65535) {
+    console.warn(`Invalid PORT "${process.env.PORT}", defaulting to 3000`)
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY
+  if (apiKey && apiKey.length > 0) {
+    const baseUrl = process.env.OPENAI_BASE_URL
+    if (!baseUrl && !/^sk-[A-Za-z0-9]{20,}$/.test(apiKey)) {
+      console.warn('OPENAI_API_KEY format looks invalid (expected sk-...). If using a compatible provider, set OPENAI_BASE_URL.')
+    }
+  } else {
+    console.log('OPENAI_API_KEY not set — AI Assistant and MCP query endpoints will be unavailable.')
+  }
+
+  if (!process.env.CORS_ORIGINS) {
+    console.log('CORS_ORIGINS not set — only localhost requests allowed.')
+  }
+
+  if (process.env.HTTPS_ENABLED === 'true') {
+    const keyPath = process.env.SSL_KEY_PATH
+    const certPath = process.env.SSL_CERT_PATH
+    if (!keyPath || !certPath) {
+      console.warn('HTTPS is enabled but SSL_KEY_PATH or SSL_CERT_PATH is not set.')
+    }
+  }
+}
+
+validateConfig()
+
 const app = express()
 app.disable('x-powered-by')
 const port = process.env.PORT || 3000
@@ -50,6 +81,7 @@ app.use(cors({
   origin: [
     ...corsOrigins,
     /^https:\/\/studio\.apollographql\.com$/, // Allow Apollo Studio
+    /^https:\/\/.*\.graphql\.com$/, // Allow GraphQL clients
     /^http:\/\/localhost:\d+$/,  // Allow any localhost port
     /^https:\/\/localhost:\d+$/, // Allow any localhost HTTPS port
     /^http:\/\/127\.0\.0\.1:\d+$/, // Allow any 127.0.0.1 port
@@ -72,6 +104,7 @@ if (fs.existsSync(dashboardPath)) {
   console.log(`Dashboard served from: ${dashboardPath}`)
 }
 
+app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }))
 app.use(mainRouter)
 app.use('/api-docs', swaggerUi.serve as any);
 app.use('/api-docs', swaggerUi.setup(openapiSpecification) as any);
@@ -151,3 +184,6 @@ server.start().then(() => {
 process.on('unhandledRejection', (reason) => {
     console.error('Unhandled Rejection:', reason)
 })
+
+process.on('SIGTERM', () => { console.log('SIGTERM received, shutting down...'); networkServer.close(() => process.exit(0)); });
+process.on('SIGINT', () => { console.log('SIGINT received, shutting down...'); networkServer.close(() => process.exit(0)); });
