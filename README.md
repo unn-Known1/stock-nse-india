@@ -60,17 +60,15 @@ cp .env.example .env
 npm start
 ```
 
-### Open the Dashboard
+### Launch Dashboard (One Command)
 
 ```bash
-# Terminal 1: API server
-npm start
-
-# Terminal 2: serve the dashboard
-npx serve dashboard
+git clone https://github.com/unn-Known1/stock-nse-india.git
+cd stock-nse-india
+./launch.sh
 ```
 
-The dashboard auto-detects the API port. Open whatever URL `serve` gives you.
+The script handles everything — copies `.env`, installs deps, builds TypeScript, and starts the server. The dashboard is served at `http://localhost:3000` (no separate `serve` command needed).
 
 ---
 
@@ -226,6 +224,7 @@ npm run build       # TypeScript build
 
 | Script | Description |
 |--------|-------------|
+| `./launch.sh` | One-command dashboard launcher (install + build + start) |
 | `npm start` | Production server |
 | `npm run start:dev` | Dev mode (auto-reload) |
 | `npm run build` | Build TypeScript → JS |
