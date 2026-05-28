@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSE India Data Explorer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app-header">
+  <h1>🏢 NSE India Data Explorer</h1>
+  <div class="header-actions">
+    <span id="server-status" class="header-status">Connecting...</span>
+    <button class="btn btn-sm" onclick="clearAllCache();location.reload()">⟳ Refresh All</button>
+  </div>
+</div>
+
+<div class="container" id="main-content">
+
+  <!-- TABS -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="tab-market">Market Overview</button>
+    <button class="tab-btn" data-tab="tab-stock">Stock Lookup</button>
+    <button class="tab-btn" data-tab="tab-indices">Indices</button>
+    <button class="tab-btn" data-tab="tab-options">Options</button>
+    <button class="tab-btn" data-tab="tab-charts">Charts</button>
+    <button class="tab-btn" data-tab="tab-technical">Technical</button>
+  </div>
+
+  <!-- ═══ MARKET OVERVIEW ═══ -->
+  <div id="tab-market" class="tab-content active">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Market Overview</span>
+        <button class="btn btn-sm" id="mo-refresh">⟳ Refresh</button>
+      </div>
+      <div class="card-grid">
+        <div class="card"><div class="card-title">Market Status</div><div id="mo-status"></div></div>
+        <div class="card"><div class="card-title">Market Turnover</div><div id="mo-turnover"></div></div>
+        <div class="card"><div class="card-title">All Indices</div><div id="mo-indices"></div></div>
+        <div class="card"><div class="card-title">Trading Holidays</div><div id="mo-holidays-t"></div></div>
+        <div class="card"><div class="card-title">Clearing Holidays</div><div id="mo-holidays-c"></div></div>
+        <div class="card"><div class="card-title">Glossary</div><div id="mo-glossary"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STOCK LOOKUP ═══ -->
+  <div id="tab-stock" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Stock Lookup</span>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label>Symbol</label>
+          <div class="autocomplete">
+            <input type="text" id="stock-symbol" placeholder="Type symbol..." autocomplete="off">
+            <div id="stock-suggestions" class="suggestions"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="stock-go">Get Data</button>
+      </div>
+      <div class="control-group" style="margin-bottom:8px">
+        <label>Filter results</label>
+        <input type="text" id="stock-filter" placeholder="Search within table..." style="max-width:300px">
+      </div>
+      <div class="card-grid">
+        <div class="card"><div class="card-title">Details <button class="btn btn-sm" style="float:right" onclick="exportCSV('stock-details','equity-details')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('stock-details','equity-details')">JSON</button></div><div id="stock-details" class="empty-msg">Select a symbol above</div></div>
+        <div class="card"><div class="card-title">Trade Info <button class="btn btn-sm" style="float:right" onclick="exportCSV('stock-trade','trade-info')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('stock-trade','trade-info')">JSON</button></div><div id="stock-trade" class="empty-msg">Select a symbol above</div></div>
+        <div class="card"><div class="card-title">Intraday <button class="btn btn-sm" style="float:right" onclick="exportCSV('stock-intraday','intraday')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('stock-intraday','intraday')">JSON</button></div><div id="stock-intraday" class="empty-msg">Select a symbol above</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ INDICES ═══ -->
+  <div id="tab-indices" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Index Explorer</span>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label>Index</label>
+          <select id="index-select" style="min-width:200px"><option value="">Loading...</option></select>
+        </div>
+        <button class="btn btn-primary" id="index-go">Get Data</button>
+      </div>
+      <div id="index-loading"></div>
+      <div class="card-grid">
+        <div class="card"><div class="card-title">Constituent Stocks <button class="btn btn-sm" style="float:right" onclick="exportCSV('index-stocks','index-stocks')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('index-stocks','index-stocks')">JSON</button></div><div id="index-stocks" class="empty-msg">Select an index above</div></div>
+        <div class="card"><div class="card-title">Gainers & Losers <button class="btn btn-sm" style="float:right" onclick="exportCSV('index-gl','gainers-losers')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('index-gl','gainers-losers')">JSON</button></div><div id="index-gl" class="empty-msg">Select an index above</div></div>
+        <div class="card"><div class="card-title">Most Active <button class="btn btn-sm" style="float:right" onclick="exportCSV('index-active','most-active')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('index-active','most-active')">JSON</button></div><div id="index-active" class="empty-msg">Select an index above</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ OPTIONS ═══ -->
+  <div id="tab-options" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Option Chain</span>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label>Type</label>
+          <select id="opt-type">
+            <option value="equity">Equity Options</option>
+            <option value="index">Index Options</option>
+          </select>
+        </div>
+        <div class="control-group" id="opt-equity-controls">
+          <label>Symbol</label>
+          <div class="autocomplete">
+            <input type="text" id="opt-symbol" placeholder="Type symbol..." autocomplete="off">
+            <div id="opt-suggestions" class="suggestions"></div>
+          </div>
+        </div>
+        <div class="control-group" id="opt-index-controls" style="display:none">
+          <label>Index</label>
+          <select id="opt-index-select" style="min-width:200px">
+            <option value="">Select index...</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="opt-go">Get Data</button>
+      </div>
+      <div id="opt-result" class="empty-msg">Select a symbol/index above</div>
+    </div>
+  </div>
+
+  <!-- ═══ CHARTS ═══ -->
+  <div id="tab-charts" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Chart Data</span>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label>Symbol</label>
+          <div class="autocomplete">
+            <input type="text" id="chart-symbol" placeholder="Type symbol..." autocomplete="off">
+            <div id="chart-suggestions" class="suggestions"></div>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Chart Type</label>
+          <select id="chart-type">
+            <option value="I">Intraday</option>
+            <option value="D">Daily</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Interval (min)</label>
+          <select id="chart-interval">
+            <option value="1">1</option>
+            <option value="5" selected>5</option>
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="60">60</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="chart-go">Get Data</button>
+      </div>
+      <div id="chart-result" class="empty-msg">Select a symbol above</div>
+    </div>
+  </div>
+
+  <!-- ═══ TECHNICAL ═══ -->
+  <div id="tab-technical" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Technical Indicators</span>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label>Symbol</label>
+          <div class="autocomplete">
+            <input type="text" id="tech-symbol" placeholder="Type symbol..." autocomplete="off">
+            <div id="tech-suggestions" class="suggestions"></div>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Period (days)</label>
+          <input type="number" id="tech-period" value="200" min="20" max="1000" style="width:80px">
+        </div>
+        <div class="control-group">
+          <label>Show latest only</label>
+          <input type="checkbox" id="tech-latest" checked>
+        </div>
+        <button class="btn btn-primary" id="tech-go">Calculate</button>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">
+        <label style="font-size:12px"><input type="checkbox" id="tech-sma" checked> SMA <input type="text" id="tech-sma-p" value="5,10,20,50,100,200" style="width:140px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-ema" checked> EMA <input type="text" id="tech-ema-p" value="5,10,20,50,100,200" style="width:140px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-rsi" checked> RSI <input type="number" id="tech-rsi-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-bb" checked> Bollinger <input type="number" id="tech-bb-p" value="20" style="width:50px;font-size:11px;padding:2px 4px"> std <input type="number" id="tech-bb-s" value="2" step="0.5" style="width:50px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-macd" checked> MACD <input type="number" id="tech-macd-f" value="12" style="width:40px;font-size:11px;padding:2px 4px">/<input type="number" id="tech-macd-s" value="26" style="width:40px;font-size:11px;padding:2px 4px">/<input type="number" id="tech-macd-m" value="9" style="width:40px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-stoch" checked> Stochastic <input type="number" id="tech-stoch-k" value="14" style="width:40px;font-size:11px;padding:2px 4px">K <input type="number" id="tech-stoch-d" value="3" style="width:40px;font-size:11px;padding:2px 4px">D</label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-wr"> Williams %R <input type="number" id="tech-wr-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-atr"> ATR <input type="number" id="tech-atr-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-adx"> ADX <input type="number" id="tech-adx-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-obv"> OBV</label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-cci"> CCI <input type="number" id="tech-cci-p" value="20" style="width:50px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-mfi"> MFI <input type="number" id="tech-mfi-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-roc"> ROC <input type="number" id="tech-roc-p" value="10" style="width:50px;font-size:11px;padding:2px 4px"></label>
+        <label style="font-size:12px"><input type="checkbox" id="tech-mom"> Momentum <input type="number" id="tech-mom-p" value="10" style="width:50px;font-size:11px;padding:2px 4px"></label>
+      </div>
+
+      <div id="tech-result" class="empty-msg">Select a symbol and calculate</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

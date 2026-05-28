@@ -602,21 +602,14 @@ If going canvas, allocate a full day for crosshair + responsiveness + tooltips.
 
 ## FILE STRUCTURE
 
-**Simplest approach (1 file):**
 ```
-nse-dashboard.html   ← Everything: HTML + CSS + JS, ~500-800 lines
+dashboard/
+├── index.html          ← HTML structure (tabs, containers, export buttons)
+├── style.css           ← All styling (responsive, dark/light ready)
+└── app.js              ← All JS (API calls, cache, autocomplete, tables, export, tabs)
 ```
 
-**Modular approach (if it gets too long):**
-```
-nse-dashboard/
-├── index.html          ← Skeleton (tabs, containers)
-├── style.css           ← All styling
-├── app.js              ← Main logic, tab switching, routing
-├── api.js              ← All fetch() calls to NSE API
-├── table.js            ← renderTable(), exportCSV(), exportJSON()
-└── chart.js            ← Canvas candlestick drawing (optional)
-```
+**One folder. Open `index.html` via a local server. No build step.**
 
 ---
 
