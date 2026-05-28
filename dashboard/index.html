@@ -26,6 +26,7 @@
     <button class="tab-btn" data-tab="tab-options">Options</button>
     <button class="tab-btn" data-tab="tab-charts">Charts</button>
     <button class="tab-btn" data-tab="tab-technical">Technical</button>
+    <button class="tab-btn" data-tab="tab-mcp" aria-label="AI Assistant with MCP tools">AI Assistant</button>
   </div>
 
   <!-- ═══ MARKET OVERVIEW ═══ -->
@@ -117,8 +118,9 @@
         <div class="card">
           <div class="card-header">
             <span class="card-title">Company Details</span>
-            <div>
+            <div class="card-header-actions">
               <button class="btn btn-sm" onclick="exportJSON('stock-details','equity-details')">JSON</button>
+              <button class="btn btn-sm mcp-ask-ai-btn" id="stock-ask-ai" style="display:none" onclick="askAIAboutStock()">Ask AI</button>
             </div>
           </div>
           <div id="stock-details" class="empty-msg">Search for a symbol above</div>
@@ -289,6 +291,126 @@
     </div>
   </div>
 
+  <!-- ═══ MCP / AI ASSISTANT ═══ -->
+  <div id="tab-mcp" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">AI Assistant</span>
+        <span id="mcp-status-msg" class="card-subtitle"></span>
+      </div>
+
+      <!-- API Key Warning (hidden when key is set) -->
+      <div id="mcp-api-key-warning" class="error-banner" style="display:none">
+        ⚠ OPENAI_API_KEY not configured. Set it in .env and restart the server.
+      </div>
+
+      <!-- Cost Banner (shown after first query) -->
+      <div id="mcp-cost-banner" class="mcp-cost-banner" style="display:none"></div>
+
+      <!-- Session Bar -->
+      <div id="mcp-session-bar" class="mcp-session-bar" style="display:none">
+        <div class="mcp-session-info">
+          <span id="mcp-session-label" class="mcp-session-label">Session: —</span>
+          <span id="mcp-session-expiry" class="mcp-session-expiry"></span>
+        </div>
+        <div id="mcp-context-stats" class="mcp-context-stats"></div>
+        <button class="btn btn-sm" id="mcp-new-session" title="Start a new conversation">+ New Session</button>
+      </div>
+
+      <!-- Main layout: Query + Response -->
+      <div class="mcp-layout">
+        <!-- Left: Query input area -->
+        <div class="mcp-query-area">
+          <div class="control-group" style="flex:1">
+            <label for="mcp-query-input">Ask a question about NSE / stock data</label>
+            <textarea id="mcp-query-input" class="mcp-query-input" placeholder="e.g., What stocks had the highest volume today? or Summarize NIFTY 50 performance..." rows="4" aria-label="Ask a question about NSE stock data"></textarea>
+            <div class="mcp-hint" style="font-size:11px;color:var(--text-secondary,#666);margin-top:-4px">Press Enter to send, Shift+Enter for newline · <span id="mcp-counter">0 words | 0 chars</span></div>
+          </div>
+          <div class="mcp-query-actions">
+            <button class="btn btn-primary" id="mcp-send" aria-label="Send query">Send</button>
+            <button class="btn btn-sm" id="mcp-regenerate" style="display:none">↻ Regenerate</button>
+            <button class="btn btn-sm" id="mcp-export" style="display:none" onclick="exportMCPResponse()">Export</button>
+            <button class="btn btn-sm" id="mcp-clear" style="display:none">Clear</button>
+          </div>
+          <div id="mcp-rate-limit" class="mcp-rate-limit" style="display:none"></div>
+        </div>
+
+        <!-- Right: Response area -->
+        <div class="mcp-response-area">
+          <div id="mcp-response" class="mcp-response" role="region" aria-live="polite" aria-label="AI response">
+            <div class="empty-msg">Ask a question to get started</div>
+          </div>
+          <div id="mcp-usage-stats" class="mcp-usage-stats" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sessions Panel (collapsible) -->
+    <details class="card" id="mcp-sessions-panel">
+      <summary class="card-header" style="cursor:pointer" role="button">
+        <span class="card-title">Session History</span>
+      </summary>
+      <div id="mcp-sessions-list" class="empty-msg">No past sessions</div>
+    </details>
+
+    <!-- Configuration Panel (collapsible) -->
+    <details class="card" id="mcp-config-panel">
+      <summary class="card-header" style="cursor:pointer" role="button">
+        <span class="card-title">Configuration</span>
+      </summary>
+      <div class="mcp-config-body">
+        <div class="controls">
+          <div class="control-group">
+            <label for="mcp-config-model">Model</label>
+            <select id="mcp-config-model">
+              <option value="gpt-4o-mini">GPT-4o Mini (fast, cheap)</option>
+              <option value="gpt-4o">GPT-4o (powerful)</option>
+              <option value="o3-mini">o3-mini (reasoning)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="mcp-config-temp">Temperature: <span id="mcp-temp-value">0.7</span></label>
+            <input type="range" id="mcp-config-temp" min="0" max="1.0" step="0.1" value="0.7" style="width:120px">
+          </div>
+          <div class="control-group">
+            <label for="mcp-config-max-tokens">Max Tokens</label>
+            <input type="number" id="mcp-config-max-tokens" value="1024" min="64" max="8192" step="64" style="width:90px">
+          </div>
+        </div>
+        <div class="mcp-cost-note">Higher temperature or max tokens = higher API cost. Consider using gpt-4o-mini for cost efficiency.</div>
+        <div class="cost-note">Higher temperature = higher cost. Higher max tokens = higher cost.</div>
+        <div class="control-group" style="margin-bottom:8px">
+          <label for="mcp-config-system-prompt">System Prompt <span class="ctrl-hint">(Ctrl+S to save)</span></label>
+          <textarea id="mcp-config-system-prompt" rows="3" style="width:100%;font-size:12px">You are a helpful NSE stock market assistant. Provide concise, data-driven answers. Use markdown for formatting. Cite your sources.</textarea>
+        </div>
+        <div class="mcp-config-actions">
+          <button class="btn btn-sm btn-primary" id="mcp-save-config">Save</button>
+          <button class="btn btn-sm" id="mcp-reset-config">Reset to Defaults</button>
+          <button class="btn btn-sm" id="mcp-test-config">Test Connection</button>
+          <label class="mcp-debug-label" title="Enables verbose API request/response logging (server restart required)">
+            <input type="checkbox" id="mcp-debug-toggle"> Debug Logging
+            <span class="mcp-debug-note">(restart required)</span>
+          </label>
+        </div>
+      </div>
+    </details>
+
+    <!-- Tools Reference Panel (collapsible) -->
+    <details class="card" id="mcp-tools-panel">
+      <summary class="card-header" style="cursor:pointer" role="button">
+        <span class="card-title">Available Tools</span>
+        <div class="card-header-actions">
+          <span id="mcp-tools-count" class="tools-count-badge"></span>
+          <input type="text" id="mcp-tools-filter" placeholder="Filter tools..." class="filter-input-sm" aria-label="Filter MCP tools by name or description">
+          <button class="btn btn-sm" id="mcp-tools-refresh" aria-label="Refresh tools list" title="Clear cache and reload">⟳ Refresh</button>
+        </div>
+      </summary>
+      <div id="mcp-tools-timestamp" class="tools-timestamp"></div>
+      <div id="mcp-tools-content" class="empty-msg">Loading tools...</div>
+      <div id="mcp-tools-pagination" class="pagination" style="display:none"></div>
+    </details>
+  </div>
+
   <!-- ═══ TECHNICAL ═══ -->
   <div id="tab-technical" class="tab-content">
     <div class="card">
@@ -356,11 +478,18 @@
 
       <!-- Full data -->
       <div id="tech-result" class="empty-msg">Select a symbol and analyze</div>
+
+      <!-- Ask AI about technical analysis -->
+      <div id="tech-ask-ai-bar" style="display:none;margin-top:8px">
+        <button class="btn btn-sm mcp-ask-ai-btn" onclick="askAIAboutTechnical()">Ask AI about this analysis</button>
+      </div>
     </div>
   </div>
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

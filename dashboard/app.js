@@ -59,7 +59,7 @@ function cacheSet(url, data) {
 }
 
 function invalidateCache(url) { cache.delete(url) }
-function clearAllCache() { cache.clear() }
+function clearAllCache() { cache.clear(); mcpToolsCache = null; mcpToolsCacheTimestamp = null }
 
 // ── API Fetch ──────────────────────────────────────────────
 async function apiFetch(url) {
@@ -1370,9 +1370,10 @@ function renderCandles(candles) {
   html += `</tbody></table></div>`
   html += `<p class="row-count">${candles.length} candles · showing last ${shown.length}</p>`
   container.innerHTML = html
+  maybeShowStockAskAI()
 }
 
-// ── Technical Tab ───────────────────────────────────────────
+
 const TECH_REFS = {
   sma: 'Simple Moving Average — average price over N periods. Higher periods = smoother line. Crossovers signal trend changes.',
   ema: 'Exponential Moving Average — weights recent prices more. Reacts faster than SMA. Common signals: price/MA crossovers.',
@@ -1626,7 +1627,710 @@ function renderTechTable(data) {
   }
 
   container.innerHTML = html
+  maybeShowTechAskAI()
 }
+
+
+
+let mcpConfig = null
+const MCP_CONFIG_KEY = 'mcp_config'
+const MCP_SESSION_KEY = 'mcp_session_id'
+const MCP_CONFIG_DEFAULTS = {
+  model: 'gpt-4o-mini',
+  temperature: 0.7,
+  maxTokens: 1024,
+  systemPrompt: 'You are a helpful NSE stock market assistant. Provide concise, data-driven answers. Use markdown for formatting. Cite your sources.',
+}
+
+function loadMCPConfig() {
+  try {
+    const saved = localStorage.getItem(MCP_CONFIG_KEY)
+    if (saved) { mcpConfig = { ...MCP_CONFIG_DEFAULTS, ...JSON.parse(saved) }; return }
+  } catch {}
+  mcpConfig = { ...MCP_CONFIG_DEFAULTS }
+}
+loadMCPConfig()
+
+function saveMCPConfig() {
+  localStorage.setItem(MCP_CONFIG_KEY, JSON.stringify(mcpConfig))
+}
+
+// Session state
+let mcpCurrentSessionId = null
+let mcpPollInterval = null
+let mcpExpiryInterval = null
+
+async function sendMCPQuery({ regenerate } = {}) {
+  const queryInput = document.getElementById('mcp-query-input')
+  const responseEl = document.getElementById('mcp-response')
+  const sendBtn = document.getElementById('mcp-send')
+  const regenerateBtn = document.getElementById('mcp-regenerate')
+  const costBanner = document.getElementById('mcp-cost-banner')
+  const rateLimitEl = document.getElementById('mcp-rate-limit')
+  const usageStatsEl = document.getElementById('mcp-usage-stats')
+
+  const query = queryInput.value.trim()
+  if (!query && !regenerate) return
+
+  sendBtn.disabled = true
+  regenerateBtn.style.display = 'none'
+
+  // Show loading with elapsed timer
+  const startTime = Date.now()
+  responseEl.innerHTML = '<div class="loading-msg"><span class="spinner"></span>Thinking... (0.0s)</div>'
+  const timerInterval = setInterval(() => {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+    const loadingEl = responseEl.querySelector('.loading-msg')
+    if (loadingEl) loadingEl.innerHTML = `<span class="spinner"></span>Thinking... (${elapsed}s)`
+  }, 100)
+
+  // Build request
+  const sessionId = localStorage.getItem(MCP_SESSION_KEY) || null
+
+  const body = {
+    model: mcpConfig.model,
+    temperature: mcpConfig.temperature,
+    maxTokens: mcpConfig.maxTokens,
+    systemPrompt: mcpConfig.systemPrompt,
+  }
+  if (!regenerate) body.query = query
+  if (sessionId) body.sessionId = sessionId
+
+  try {
+    const res = await apiFetch('/api/mcp/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    // Save session
+    if (res?.sessionId) {
+      localStorage.setItem(MCP_SESSION_KEY, res.sessionId)
+      renderMCPSessionBar(res.sessionId, res)
+    }
+
+    // Render response
+    renderMCPResponse(res)
+
+    // Cost banner
+    if (res?.cost != null) {
+      const cost = typeof res.cost === 'number' ? `$${res.cost.toFixed(6)}` : res.cost
+      costBanner.innerHTML = `💰 Approx cost: ${cost}`
+      costBanner.style.display = 'flex'
+    } else {
+      costBanner.style.display = 'none'
+    }
+
+    // Rate limit
+    if (res?.rateLimit) {
+      const rl = res.rateLimit
+      rateLimitEl.textContent = `Rate: ${rl.remaining || 0}/${rl.limit || '?'} remaining · Resets ${rl.reset ? new Date(rl.reset * 1000).toLocaleTimeString() : '—'}`
+      rateLimitEl.style.display = 'block'
+    } else {
+      rateLimitEl.style.display = 'none'
+    }
+
+    // Usage stats + response time
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
+    if (res?.usage) {
+      const u = res.usage
+      usageStatsEl.innerHTML = `Tokens: ${u.promptTokens || 0}↑ / ${u.completionTokens || 0}↓ (total ${u.totalTokens || 0}) · Response in ${elapsed}s`
+      usageStatsEl.style.display = 'block'
+    } else {
+      usageStatsEl.innerHTML = `Response in ${elapsed}s`
+      usageStatsEl.style.display = 'block'
+    }
+
+    // Show regenerate + export + clear
+    regenerateBtn.style.display = 'inline-block'
+    document.getElementById('mcp-clear').style.display = 'inline-block'
+    document.getElementById('mcp-export').style.display = 'inline-block'
+
+  } catch (err) {
+    renderMCPError(err)
+  } finally {
+    clearInterval(timerInterval)
+    sendBtn.disabled = false
+  }
+}
+
+function renderMCPResponse(res) {
+  const responseEl = document.getElementById('mcp-response')
+  const content = res?.content || res?.response || res?.message || ''
+  if (!content) {
+    responseEl.innerHTML = '<div class="empty-msg">No response from AI</div>'
+    return
+  }
+  // Markdown render with XSS protection
+  let html
+  try {
+    if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+      html = marked.parse(content)
+      html = DOMPurify.sanitize(html)
+    } else {
+      html = '<pre style="white-space:pre-wrap">' + escapeHtml(content) + '</pre>'
+    }
+  } catch {
+    html = '<pre style="white-space:pre-wrap">' + escapeHtml(content) + '</pre>'
+  }
+  responseEl.innerHTML = html
+}
+
+function renderMCPError(err) {
+  const responseEl = document.getElementById('mcp-response')
+  const msg = err?.message || String(err) || 'Unknown error'
+  let displayMsg = msg
+  let retry = true
+
+  if (msg.includes('401') || msg.includes('unauthorized') || msg.includes('API key')) {
+    displayMsg = '❌ OpenAI API key error. Please check your OPENAI_API_KEY in .env and restart the server.'
+    retry = false
+  } else if (msg.includes('429') || msg.includes('rate limit')) {
+    displayMsg = '⏳ Rate limited. Please wait before sending another query.'
+    retry = true
+  } else if (msg.includes('500') || msg.includes('server error') || msg.includes('Internal Server Error')) {
+    displayMsg = '⚠️ Server error. The backend may be down or misconfigured.'
+    retry = true
+  } else if (msg.includes('timeout') || msg.includes('timed out') || msg.includes('abort')) {
+    displayMsg = '⏰ Request timed out. The AI took too long to respond. Try a simpler question.'
+    retry = true
+  } else if (msg.includes('502') || msg.includes('503') || msg.includes('Bad Gateway') || msg.includes('Service Unavailable') || msg.includes('gateway')) {
+    displayMsg = '⚠️ Gateway error (502/503). The upstream API may be temporarily unavailable. Please try again shortly.'
+    retry = true
+  }
+
+  responseEl.innerHTML = `<div class="error-banner">${escapeHtml(displayMsg)}${retry ? '<button class="btn btn-sm" onclick="sendMCPQuery({regenerate:true})">Retry</button>' : ''}</div>`
+}
+
+function exportMCPResponse() {
+  const container = document.getElementById('mcp-response')
+  if (!container) return
+  const text = container.textContent || container.innerText || ''
+  download(text.trim() || 'No response content', 'mcp-response', 'text/plain;charset=utf-8')
+}
+
+function renderMCPSessionBar(sessionId, data) {
+  const bar = document.getElementById('mcp-session-bar')
+  const labelEl = document.getElementById('mcp-session-label')
+  const statsEl = document.getElementById('mcp-context-stats')
+
+  mcpCurrentSessionId = sessionId
+  bar.style.display = 'flex'
+  labelEl.textContent = `Session: ${sessionId.slice(0, 12)}...`
+
+  if (data?.contextStats) {
+    const s = data.contextStats
+    statsEl.textContent = `Messages: ${s.messages || 0} · Tokens: ${s.tokens || 0}`
+  } else {
+    statsEl.textContent = ''
+  }
+
+  if (data?.expiresAt) {
+    startMCPExpiryCountdown(data.expiresAt)
+  }
+
+  startMCPContextPolling(sessionId)
+}
+
+function startMCPContextPolling(sessionId) {
+  stopMCPContextPolling()
+  const pollFn = async () => {
+    try {
+      const data = await apiFetch(`/api/mcp/session/${sessionId}`)
+      if (data?.contextStats) {
+        const s = data.contextStats
+        document.getElementById('mcp-context-stats').textContent = `Messages: ${s.messages || 0} · Tokens: ${s.tokens || 0}`
+      }
+    } catch {
+      // session may be gone
+    }
+  }
+  pollFn()
+  mcpPollInterval = setInterval(pollFn, 10000)
+}
+
+function stopMCPContextPolling() {
+  if (mcpPollInterval) {
+    clearInterval(mcpPollInterval)
+    mcpPollInterval = null
+  }
+}
+
+function startMCPExpiryCountdown(expiresAt) {
+  stopMCPExpiryCountdown()
+  const expiryEl = document.getElementById('mcp-session-expiry')
+  function tick() {
+    const now = Date.now()
+    const exp = new Date(expiresAt).getTime()
+    const diff = exp - now
+    if (diff <= 0) {
+      expiryEl.textContent = 'Expired'
+      document.getElementById('mcp-session-bar').style.display = 'none'
+      stopMCPExpiryCountdown()
+      stopMCPContextPolling()
+      localStorage.removeItem(MCP_SESSION_KEY)
+      mcpCurrentSessionId = null
+      return
+    }
+    const mins = Math.floor(diff / 60000)
+    const secs = Math.floor((diff % 60000) / 1000)
+    expiryEl.textContent = `Expires in ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+  tick()
+  mcpExpiryInterval = setInterval(tick, 1000)
+}
+
+function stopMCPExpiryCountdown() {
+  if (mcpExpiryInterval) {
+    clearInterval(mcpExpiryInterval)
+    mcpExpiryInterval = null
+  }
+}
+
+function updateMCPPolling() {
+  if (!mcpCurrentSessionId) {
+    stopMCPContextPolling()
+    return
+  }
+  const mcpTab = document.getElementById('tab-mcp')
+  const isActive = mcpTab && mcpTab.classList.contains('active')
+  const isVisible = !document.hidden
+  if (isActive && isVisible) {
+    if (!mcpPollInterval) {
+      startMCPContextPolling(mcpCurrentSessionId)
+    }
+  } else {
+    stopMCPContextPolling()
+  }
+}
+
+async function validateMCPRestore(sessionId) {
+  try {
+    const data = await apiFetch(`/api/mcp/session/${sessionId}`)
+    renderMCPSessionBar(sessionId, data)
+  } catch {
+    localStorage.removeItem(MCP_SESSION_KEY)
+    document.getElementById('mcp-session-bar').style.display = 'none'
+  }
+}
+
+async function loadMCPSessions() {
+  const container = document.getElementById('mcp-sessions-list')
+  try {
+    const data = await apiFetch('/api/mcp/sessions')
+    const sessions = data?.sessions || data || []
+    renderMCPSessions(sessions)
+  } catch {
+    container.innerHTML = '<div class="empty-msg">Failed to load sessions</div>'
+  }
+}
+
+function renderMCPSessions(sessions) {
+  const container = document.getElementById('mcp-sessions-list')
+  if (!sessions.length) {
+    container.innerHTML = '<div class="empty-msg">No past sessions</div>'
+    return
+  }
+  container.innerHTML = sessions.map(s => {
+    const sid = s.sessionId || s.id || ''
+    const isActive = sid === mcpCurrentSessionId
+    const msgCount = s.messageCount || s.contextStats?.messages || 0
+    const lastUsed = s.lastUsed || s.updatedAt || s.createdAt
+    const relTime = lastUsed ? formatRelativeTime(lastUsed) : '—'
+    return `<div class="mcp-session-item ${isActive ? 'active' : ''}">
+      <div class="mcp-session-item-info">
+        <span class="mcp-session-item-id">${sid.slice(0, 12)}...</span>
+        <span class="mcp-session-item-meta">${msgCount} msgs · ${relTime}</span>
+      </div>
+      <div class="mcp-session-item-actions">
+        <button class="btn btn-sm mcp-session-load" data-sid="${sid}">Load</button>
+        <button class="btn btn-sm mcp-session-delete" data-sid="${sid}">Delete</button>
+      </div>
+    </div>`
+  }).join('')
+  container.querySelectorAll('.mcp-session-load').forEach(btn => {
+    btn.addEventListener('click', () => loadMCPSession(btn.dataset.sid))
+  })
+  container.querySelectorAll('.mcp-session-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this session?')) return
+      await deleteMCPSession(btn.dataset.sid)
+    })
+  })
+}
+
+function formatRelativeTime(dateVal) {
+  const date = dateVal instanceof Date ? dateVal : new Date(dateVal)
+  const diff = Date.now() - date.getTime()
+  const secs = Math.floor(diff / 1000)
+  if (secs < 60) return 'just now'
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+async function loadMCPSession(sessionId) {
+  localStorage.setItem(MCP_SESSION_KEY, sessionId)
+  document.getElementById('mcp-response').innerHTML = '<div class="loading-msg"><span class="spinner"></span>Loading session...</div>'
+  await sendMCPQuery({ regenerate: true })
+  loadMCPSessions()
+}
+
+async function deleteMCPSession(sessionId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/mcp/session/${sessionId}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Delete failed')
+    loadMCPSessions()
+    if (sessionId === mcpCurrentSessionId || sessionId === localStorage.getItem(MCP_SESSION_KEY)) {
+      localStorage.removeItem(MCP_SESSION_KEY)
+      mcpCurrentSessionId = null
+      document.getElementById('mcp-session-bar').style.display = 'none'
+      stopMCPContextPolling()
+      stopMCPExpiryCountdown()
+    }
+  } catch (err) {
+    alert('Failed to delete session: ' + (err.message || 'Unknown error'))
+  }
+}
+
+let mcpToolsCache = null
+let mcpToolsCacheTimestamp = null
+
+function formatMCPParams(params) {
+  if (!params || !Object.keys(params).length) return '—'
+  // JSON Schema format: { type:'object', properties:{...}, required:[...] }
+  if (params.properties && typeof params.properties === 'object') {
+    const required = params.required || []
+    return Object.entries(params.properties).map(([k, v]) => {
+      const type = v.type || 'any'
+      const req = required.includes(k) ? ' *required*' : ''
+      return `<code>${escapeHtml(k)}</code>: <em>${escapeHtml(type)}</em>${req}`
+    }).join('<br>')
+  }
+  // Direct format: { paramName: { type:'string', required:true, ... } }
+  return Object.entries(params).map(([k, v]) => {
+    const type = (v && v.type) || 'any'
+    const req = (v && v.required) ? ' *required*' : ''
+    return `<code>${escapeHtml(k)}</code>: <em>${escapeHtml(type)}</em>${req}`
+  }).join('<br>')
+}
+
+async function loadMCPTools() {
+  const container = document.getElementById('mcp-tools-content')
+  const pagination = document.getElementById('mcp-tools-pagination')
+
+  // Check 1-hour cache expiry
+  if (mcpToolsCache && mcpToolsCacheTimestamp && (Date.now() - mcpToolsCacheTimestamp) > 3600000) {
+    mcpToolsCache = null
+    mcpToolsCacheTimestamp = null
+  }
+
+  if (mcpToolsCache) {
+    renderMCPTools(mcpToolsCache)
+    return
+  }
+
+  container.innerHTML = '<div class="loading-msg"><span class="spinner"></span>Loading tools...</div>'
+
+  try {
+    const data = await apiFetch('/api/mcp/tools')
+    let tools = data?.tools || data || []
+    tools.sort((a, b) => (a.name || a.function?.name || '').localeCompare(b.name || b.function?.name || ''))
+    mcpToolsCache = tools
+    mcpToolsCacheTimestamp = Date.now()
+    renderMCPTools(tools)
+  } catch (err) {
+    container.innerHTML = '<div class="empty-msg">Failed to load tools</div>'
+  }
+}
+
+function renderMCPTools(tools) {
+  const container = document.getElementById('mcp-tools-content')
+  const pagination = document.getElementById('mcp-tools-pagination')
+  const filterInput = document.getElementById('mcp-tools-filter')
+  const countBadge = document.getElementById('mcp-tools-count')
+  const timestampEl = document.getElementById('mcp-tools-timestamp')
+
+  // Update tool count badge
+  if (countBadge) countBadge.textContent = tools.length ? `${tools.length} tool${tools.length !== 1 ? 's' : ''}` : ''
+
+  // Update cache timestamp
+  if (timestampEl && mcpToolsCacheTimestamp) {
+    const seconds = Math.floor((Date.now() - mcpToolsCacheTimestamp) / 1000)
+    let relTime
+    if (seconds < 60) relTime = 'just now'
+    else if (seconds < 3600) relTime = `${Math.floor(seconds / 60)} min ago`
+    else relTime = `${Math.floor(seconds / 3600)}h ago`
+    timestampEl.textContent = `Cached: ${relTime}`
+  }
+
+  if (!tools.length) {
+    container.innerHTML = '<div class="empty-msg">No tools available</div>'
+    pagination.style.display = 'none'
+    return
+  }
+
+  const PAGE_SIZE = 10
+  let currentPage = 1
+  let filtered = [...tools]
+
+  function renderPage() {
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1
+    if (currentPage > totalPages) currentPage = totalPages
+    const start = (currentPage - 1) * PAGE_SIZE
+    const page = filtered.slice(start, start + PAGE_SIZE)
+
+    let html = '<div class="mcp-tools-table table-wrap"><table><thead><tr><th>Tool</th><th>Description</th><th>Parameters</th></tr></thead><tbody>'
+    page.forEach(t => {
+      const params = t.parameters || t.params || {}
+      const paramStr = formatMCPParams(params)
+      html += `<tr><td><strong>${escapeHtml(t.name || t.function?.name || '—')}</strong></td>
+        <td>${escapeHtml(t.description || t.function?.description || '')}</td>
+        <td style="font-size:11px">${paramStr}</td></tr>`
+    })
+    html += '</tbody></table></div>'
+    html += `<p class="row-count">${filtered.length} tool${filtered.length !== 1 ? 's' : ''} · showing ${start + 1}-${Math.min(start + PAGE_SIZE, filtered.length)}</p>`
+    container.innerHTML = html
+
+    // Pagination
+    if (totalPages > 1) {
+      let p = ''
+      p += `<button class="btn btn-sm" ${currentPage <= 1 ? 'disabled' : ''} onclick="mcpToolsPage(${currentPage - 1})" aria-label="Previous page">← Prev</button>`
+      p += `<span>Page ${currentPage} of ${totalPages}</span>`
+      p += `<button class="btn btn-sm" ${currentPage >= totalPages ? 'disabled' : ''} onclick="mcpToolsPage(${currentPage + 1})" aria-label="Next page">Next →</button>`
+      pagination.innerHTML = p
+      pagination.style.display = 'flex'
+    } else {
+      pagination.style.display = 'none'
+    }
+  }
+
+  // Expose pagination function globally
+  window.mcpToolsPage = (page) => {
+    currentPage = page
+    renderPage()
+  }
+
+  // Filter (only set up once to avoid duplicate listeners)
+  if (!filterInput.dataset.mcpFilterReady) {
+    filterInput.dataset.mcpFilterReady = 'true'
+    filterInput.addEventListener('input', function() {
+      const q = this.value.toLowerCase()
+      filtered = tools.filter(t => {
+        const name = (t.name || t.function?.name || '').toLowerCase()
+        const desc = (t.description || t.function?.description || '').toLowerCase()
+        return name.includes(q) || desc.includes(q)
+      })
+      currentPage = 1
+      renderPage()
+    })
+  }
+
+  renderPage()
+}
+
+async function testMCPConnection() {
+  const btn = document.getElementById('mcp-test-config')
+  const msgEl = document.getElementById('mcp-status-msg')
+  btn.disabled = true
+  msgEl.textContent = 'Testing...'
+
+  try {
+    const data = await apiFetch('/api/mcp/test')
+    if (data?.status === 'ok') {
+      msgEl.textContent = `✓ Connected ${data.openaiConfigured ? '(API key configured)' : '(no API key — queries will fail)'}`
+    } else {
+      msgEl.textContent = `⚠ ${data?.error || 'Unexpected response'}`
+    }
+  } catch (err) {
+    msgEl.textContent = `✗ ${err?.message || 'Connection failed'}`
+  } finally {
+    btn.disabled = false
+    setTimeout(() => { msgEl.textContent = '' }, 5000)
+  }
+}
+
+// ── Cross-tab "Ask AI" helper ────────────────────────────
+// ── MCP Initialization ─────────────────────────────────────
+function initMCPTab() {
+  // API key check
+  const warningEl = document.getElementById('mcp-api-key-warning')
+  apiFetch('/api/mcp/test').then(data => {
+    if (warningEl) warningEl.style.display = (data?.status === 'ok' || data?.openaiConfigured) ? 'none' : 'flex'
+  }).catch(() => {
+    if (warningEl) warningEl.style.display = 'flex'
+  })
+
+  // Restore session from localStorage if valid
+  const storedSession = localStorage.getItem(MCP_SESSION_KEY)
+  if (storedSession) {
+    mcpCurrentSessionId = storedSession
+    validateMCPRestore(storedSession)
+  }
+
+  // Load config into UI
+  document.getElementById('mcp-config-model').value = mcpConfig.model
+  document.getElementById('mcp-config-temp').value = mcpConfig.temperature
+  document.getElementById('mcp-temp-value').textContent = mcpConfig.temperature
+  document.getElementById('mcp-config-max-tokens').value = mcpConfig.maxTokens
+  document.getElementById('mcp-config-system-prompt').value = mcpConfig.systemPrompt
+
+  // Temperature slider live update
+  document.getElementById('mcp-config-temp').addEventListener('input', function() {
+    document.getElementById('mcp-temp-value').textContent = this.value
+  })
+
+  // Query input handlers
+  const queryInput = document.getElementById('mcp-query-input')
+  document.getElementById('mcp-send').addEventListener('click', () => sendMCPQuery())
+  queryInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMCPQuery() }
+  })
+  // Word/char counter
+  queryInput.addEventListener('input', function() {
+    const text = this.value.trim()
+    const words = text ? text.split(/\s+/).length : 0
+    const chars = this.value.length
+    const counter = document.getElementById('mcp-counter')
+    if (counter) counter.textContent = `${words} words | ${chars} chars`
+  })
+
+  // Regenerate, Clear, Export
+  document.getElementById('mcp-regenerate').addEventListener('click', () => sendMCPQuery({ regenerate: true }))
+  document.getElementById('mcp-clear').addEventListener('click', () => {
+    document.getElementById('mcp-response').innerHTML = '<div class="empty-msg">Ask a question to get started</div>'
+    document.getElementById('mcp-usage-stats').style.display = 'none'
+    document.getElementById('mcp-regenerate').style.display = 'none'
+    document.getElementById('mcp-clear').style.display = 'none'
+    document.getElementById('mcp-export').style.display = 'none'
+    document.getElementById('mcp-cost-banner').style.display = 'none'
+    document.getElementById('mcp-rate-limit').style.display = 'none'
+    queryInput.value = ''
+    queryInput.focus()
+  })
+
+  // Config save
+  document.getElementById('mcp-save-config').addEventListener('click', () => {
+    mcpConfig.model = document.getElementById('mcp-config-model').value
+    mcpConfig.temperature = parseFloat(document.getElementById('mcp-config-temp').value)
+    mcpConfig.maxTokens = parseInt(document.getElementById('mcp-config-max-tokens').value, 10) || 1024
+    mcpConfig.systemPrompt = document.getElementById('mcp-config-system-prompt').value
+    saveMCPConfig()
+    document.getElementById('mcp-status-msg').textContent = '✓ Config saved'
+    setTimeout(() => { document.getElementById('mcp-status-msg').textContent = '' }, 2000)
+  })
+
+  // Config reset
+  document.getElementById('mcp-reset-config').addEventListener('click', () => {
+    mcpConfig = { ...MCP_CONFIG_DEFAULTS }
+    saveMCPConfig()
+    document.getElementById('mcp-config-model').value = mcpConfig.model
+    document.getElementById('mcp-config-temp').value = mcpConfig.temperature
+    document.getElementById('mcp-temp-value').textContent = mcpConfig.temperature
+    document.getElementById('mcp-config-max-tokens').value = mcpConfig.maxTokens
+    document.getElementById('mcp-config-system-prompt').value = mcpConfig.systemPrompt
+    document.getElementById('mcp-status-msg').textContent = '✓ Config reset to defaults'
+    setTimeout(() => { document.getElementById('mcp-status-msg').textContent = '' }, 2000)
+  })
+
+  // Test connection
+  document.getElementById('mcp-test-config').addEventListener('click', testMCPConnection)
+
+  // Debug toggle
+  document.getElementById('mcp-debug-toggle').addEventListener('change', async function() {
+    try {
+      const res = await apiFetch('/api/mcp/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ debugLogging: this.checked })
+      })
+      const msg = res?.restartRequired 
+        ? 'Setting will take effect on next server restart' 
+        : 'Debug logging ' + (this.checked ? 'enabled' : 'disabled')
+      document.getElementById('mcp-status-msg').textContent = msg
+      setTimeout(() => { document.getElementById('mcp-status-msg').textContent = '' }, 4000)
+    } catch {
+      document.getElementById('mcp-status-msg').textContent = 'Failed to update debug setting'
+      setTimeout(() => { document.getElementById('mcp-status-msg').textContent = '' }, 3000)
+    }
+  })
+
+  // New session
+  document.getElementById('mcp-new-session').addEventListener('click', () => {
+    localStorage.removeItem(MCP_SESSION_KEY)
+    document.getElementById('mcp-response').innerHTML = '<div class="empty-msg">New session started. Ask a question!</div>'
+    document.getElementById('mcp-session-bar').style.display = 'none'
+    document.getElementById('mcp-usage-stats').style.display = 'none'
+    document.getElementById('mcp-cost-banner').style.display = 'none'
+    document.getElementById('mcp-rate-limit').style.display = 'none'
+    document.getElementById('mcp-regenerate').style.display = 'none'
+    document.getElementById('mcp-clear').style.display = 'none'
+    document.getElementById('mcp-export').style.display = 'none'
+    queryInput.value = ''
+    queryInput.focus()
+    stopMCPContextPolling()
+    stopMCPExpiryCountdown()
+    mcpCurrentSessionId = null
+  })
+
+  // Ctrl+S to save config when in system prompt
+  document.getElementById('mcp-config-system-prompt').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault()
+      document.getElementById('mcp-save-config').click()
+    }
+  })
+
+  // Visibility + tab change for polling
+  document.addEventListener('visibilitychange', updateMCPPolling)
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => setTimeout(updateMCPPolling, 100))
+  })
+}
+
+function switchToMCPTab(question) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
+  document.querySelector('.tab-btn[data-tab="tab-mcp"]')?.classList.add('active')
+  document.getElementById('tab-mcp')?.classList.add('active')
+  const input = document.getElementById('mcp-query-input')
+  if (input) {
+    input.value = question
+    document.getElementById('mcp-send')?.click()
+  }
+}
+
+function askAIAboutStock() {
+  const symbol = document.getElementById('stock-symbol')?.value?.trim()?.toUpperCase()
+  if (!symbol) return
+  switchToMCPTab(`Analyze ${symbol}: summarize key financials, recent price action, and any notable signals or risks based on available NSE data.`)
+}
+
+function askAIAboutTechnical() {
+  const symbol = document.getElementById('tech-symbol')?.value?.trim()?.toUpperCase()
+  if (!symbol) return
+  switchToMCPTab(`Interpret the technical indicators for ${symbol}: identify the trend, momentum signals, overbought/oversold conditions, and suggest a short-term outlook.`)
+}
+
+// Show/hide "Ask AI" buttons when data loads — hook into existing render functions
+function maybeShowStockAskAI() {
+  const btn = document.getElementById('stock-ask-ai')
+  const detailsEl = document.getElementById('stock-details')
+  if (btn && detailsEl && !detailsEl.classList.contains('empty-msg') && detailsEl.innerHTML.trim()) {
+    btn.style.display = 'inline-block'
+  }
+}
+function maybeShowTechAskAI() {
+  const bar = document.getElementById('tech-ask-ai-bar')
+  const techEl = document.getElementById('tech-result')
+  if (bar && techEl && !techEl.classList.contains('empty-msg') && techEl.innerHTML.trim()) {
+    bar.style.display = 'block'
+  }
+}
+
 
 // ── Init ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1666,4 +2370,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   initOptionsTab()
   initChartsTab()
   initTechnicalTab()
+  initMCPTab()
+
+  // Load MCP tools and session list on first visit to tab
+  document.querySelector('.tab-btn[data-tab="tab-mcp"]')?.addEventListener('click', () => {
+    loadMCPTools()
+    loadMCPSessions()
+  }, { once: true })
 })
