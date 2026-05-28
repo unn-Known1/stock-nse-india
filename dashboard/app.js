@@ -62,17 +62,20 @@ function invalidateCache(url) { cache.delete(url) }
 function clearAllCache() { cache.clear(); mcpToolsCache = null; mcpToolsCacheTimestamp = null }
 
 // ── API Fetch ──────────────────────────────────────────────
-async function apiFetch(url) {
-  const cached = cacheGet(url)
-  if (cached) return cached
+async function apiFetch(url, options = {}) {
+  const isGet = !options.method || options.method === 'GET'
+  if (isGet) {
+    const cached = cacheGet(url)
+    if (cached) return cached
+  }
 
-  const res = await fetch(`${API_BASE}${url}`)
+  const res = await fetch(`${API_BASE}${url}`, options)
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new Error(`${res.status}${text ? ': ' + text.replace(/\[NSE API\]/g, 'NSE') : ''}`)
   }
   const data = await res.json()
-  cacheSet(url, data)
+  if (isGet) cacheSet(url, data)
   return data
 }
 

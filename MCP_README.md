@@ -199,7 +199,25 @@ If you have cloned the repository and built the project locally:
 - Repository cloned and dependencies installed (`npm install`)
 - Project built (`npm run build`)
 
-#### Configuring in Cursor IDE
+#### Configuring in opencode
+
+Add to your `opencode.json` (project or global):
+
+```json
+{
+  "mcp": {
+    "nse-india": {
+      "type": "local",
+      "command": ["node", "build/mcp/server/mcp-server-stdio.js"],
+      "enabled": true
+    }
+  }
+}
+```
+
+Make sure to run opencode from the project directory (or use an absolute path). Quit and restart opencode to apply.
+
+## Configuring in Cursor IDE
 
 1. **Open Cursor Settings**: 
    - Press `Cmd+,` (Mac) or `Ctrl+,` (Windows/Linux) to open settings

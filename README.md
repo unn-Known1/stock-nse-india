@@ -159,12 +159,30 @@ query GetEquity {
 
 ### 🤖 MCP Server (AI Assistants)
 
-Model Context Protocol server for AI tools like Cursor, Claude, etc. See [MCP_README.md](MCP_README.md) for configuration.
+Model Context Protocol server for AI tools like Cursor, Claude Desktop, **opencode**, etc. See [MCP_README.md](MCP_README.md) for configuration.
 
 ```bash
 npm run start:mcp     # Start stdio MCP server
 npm run test:mcp      # Test it
 ```
+
+#### opencode Integration
+
+Add to your project-level `opencode.json` (already created in this repo):
+
+```json
+{
+  "mcp": {
+    "nse-india": {
+      "type": "local",
+      "command": ["node", "build/mcp/server/mcp-server-stdio.js"],
+      "enabled": true
+    }
+  }
+}
+```
+
+For global config (all projects), place in `~/.config/opencode/opencode.json`. Quit and restart opencode to pick up changes.
 
 ### 💻 CLI
 
