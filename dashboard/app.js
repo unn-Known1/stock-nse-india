@@ -1137,14 +1137,29 @@ async function loadOptionsData(type, key) {
 
   try {
     const data = await apiFetch(url)
-    const records = data?.data || []
+
+    // Normalize: equity options have data[] with optionType CE/PE rows,
+    // index options have records.data[] with nested CE/PE per row
+    let records = data?.data || data?.records?.data || []
+    const underlyingVal = data?.records?.underlyingValue || records[0]?.underlyingValue || 0
+
+    // If index options (nested CE/PE), flatten into separate records
+    if (data?.records?.data && data.records.data[0]?.CE && data.records.data[0]?.PE) {
+      const flat = []
+      data.records.data.forEach(row => {
+        if (row.CE) flat.push({ ...row.CE, optionType: 'CE', expiryDate: row.expiryDates || row.CE.expiryDate, strikePrice: row.CE.strikePrice })
+        if (row.PE) flat.push({ ...row.PE, optionType: 'PE', expiryDate: row.expiryDates || row.PE.expiryDate, strikePrice: row.PE.strikePrice })
+      })
+      records = flat
+    }
+
     if (!records.length) {
       document.getElementById(id).innerHTML = '<div class="empty-msg">No option chain data</div>'
       return
     }
 
     optAllData = records
-    optUnderlyingVal = records[0]?.underlyingValue || 0
+    optUnderlyingVal = underlyingVal
     const underlyingName = records[0]?.underlying || key
 
     // Show underlying
