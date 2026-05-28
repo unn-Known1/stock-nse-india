@@ -7,7 +7,7 @@
 
 A comprehensive package and API server for accessing equity/index details and historical data from the National Stock Exchange of India. Provides an NPM package, a full-featured REST/GraphQL API server, a CLI tool, and a browser dashboard.
 
-**📚 [Documentation](https://unn-Known1.github.io/stock-nse-india)** | **🚀 [Examples](https://github.com/unn-Known1/stock-nse-india/tree/master/examples)**
+**📚 [Documentation](https://hi-imcodeman.github.io/stock-nse-india)** | **🚀 [Examples](https://github.com/unn-Known1/stock-nse-india/tree/master/examples)**
 
 ## ✨ Features
 
@@ -120,7 +120,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## 🔗 Links
 
-- **🌐 [Website](https://unn-Known1.github.io/stock-nse-india)**
+- **🌐 [Website](https://hi-imcodeman.github.io/stock-nse-india)**
 - **📦 [NPM](https://www.npmjs.com/package/stock-nse-india)**
 - **🐳 [Docker Hub](https://hub.docker.com/r/imcodeman/nseindia)**
 - **🐛 [Issues](https://github.com/unn-Known1/stock-nse-india/issues)**
