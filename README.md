@@ -266,8 +266,8 @@ This is a fork of [hi-imcodeman/stock-nse-india](https://github.com/hi-imcodeman
 
 Original contributors:
 
-<a href="https://github.com/hi-imcodeman/stock-nse-india/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=hi-imcodeman/stock-nse-india" />
+<a href="https://github.com/unn-Known1/stock-nse-india/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=unn-Known1/stock-nse-india" />
 </a>
 
 ---
