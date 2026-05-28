@@ -1,6 +1,5 @@
 input StringArrayFilter {
   startsWith: String
-  regex: String
   in: [String]
   nin: [String]
   eq: String,
@@ -10,5 +9,4 @@ input StringArrayFilter {
 }
 
 input ObjectFilter {
-  regex: String
 }

@@ -334,12 +334,16 @@ Format as JSON with these fields: summary, keyPoints, importantStocks, important
     let recentMessages = messages.slice(-recentMessageCount)
     
     // Adjust to fit target token count
+    let iterations = 0
     while (recentMessageCount > 2) {
+      if (iterations >= 100) break
+      iterations++
       const testTokens = this.countTokens(recentMessages, systemPrompt)
       if (testTokens.totalTokens <= targetTokensAfterSummarization) {
         break
       }
       recentMessageCount -= 2 // Remove one conversation pair at a time
+      if (recentMessageCount < 2) break
       recentMessages = messages.slice(-recentMessageCount)
     }
     
@@ -443,6 +447,6 @@ Format as JSON with these fields: summary, keyPoints, importantStocks, important
    * Get current configuration
    */
   getConfig(): ContextWindowConfig {
-    return { ...this.config }
+    return JSON.parse(JSON.stringify(this.config))
   }
 }

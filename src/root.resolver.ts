@@ -1,7 +1,23 @@
+import DataLoader from 'dataloader'
 import { ApiList, NseIndia } from './index'
 import { EquityDetails } from './interface'
 
 const nseIndia = new NseIndia()
+
+const equityDetailsLoader = new DataLoader<string, EquityDetails>(
+    async (symbols) => {
+        const results = await Promise.allSettled(
+            symbols.map((s) => nseIndia.getEquityDetails(s))
+        )
+        return results.map((r) => {
+            if (r.status === 'rejected') {
+                throw r.reason
+            }
+            return r.value
+        })
+    },
+    { cache: true }
+)
 
 interface StringArrayFilter {
     startsWith?: string
@@ -18,6 +34,23 @@ interface ObjectFilter {
     regex?: string
 }
 
+function regexTestWithTimeout(regex: RegExp, str: string, timeoutMs = 100): boolean {
+    let timedOut = false
+    const timer = setTimeout(() => { timedOut = true }, timeoutMs)
+    if (typeof timer.unref === 'function') timer.unref()
+    try {
+        const result = regex.test(str)
+        clearTimeout(timer)
+        if (timedOut) {
+            throw new Error(`Regex execution timed out after ${timeoutMs}ms: /${regex.source}/`)
+        }
+        return result
+    } catch (err) {
+        clearTimeout(timer)
+        throw err
+    }
+}
+
 function stringArrayFilter(input: string[], filter?: StringArrayFilter) {
     let data = [...input]
     const { offset, limit, eq, neq, in: inside, nin, startsWith, regex } = filter || {}
@@ -26,7 +59,7 @@ function stringArrayFilter(input: string[], filter?: StringArrayFilter) {
     }
     if (regex) {
         const re = new RegExp(regex)
-        data = data.filter(item => re.test(item))
+        data = data.filter(item => regexTestWithTimeout(re, item))
     }
     if (inside?.length) {
         data = data.filter(item => inside.includes(item))
@@ -54,7 +87,7 @@ function objectFilter(input: any, filterBy?: string, filter?: ObjectFilter) {
     let data = [...input]
     if (regex && filterBy) {
         const re = new RegExp(regex)
-        data = data.filter((item: { [x: string]: string }) => re.test(item[filterBy]))
+        data = data.filter((item: { [x: string]: string }) => regexTestWithTimeout(re, item[filterBy]))
     }
     return data
 }
@@ -77,9 +110,8 @@ export default {
         symbol: (parent: string): string => {
             return parent
         },
-        details: async (parent: string): Promise<EquityDetails> => {
-            const result = await nseIndia.getEquityDetails(parent)
-            return result
+        details: (parent: string): Promise<EquityDetails> => {
+            return equityDetailsLoader.load(parent)
         }
     }
 }

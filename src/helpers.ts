@@ -1,5 +1,5 @@
 import { NseIndia } from './index'
-import { IndexEquityInfo, TechnicalIndicators, EquityHistoricalInfo } from './interface'
+import { IndexEquityInfo, TechnicalIndicators, TechnicalIndicatorOptions, EquityHistoricalInfo } from './interface'
 import * as indicators from 'indicatorts'
 
 const nseIndia = new NseIndia()
@@ -50,26 +50,7 @@ export const getTechnicalIndicators = async (
     symbol: string, 
     /* istanbul ignore next */
     period = 200,
-    /* istanbul ignore next */
-    options: {
-        smaPeriods?: number[] // Array of periods for SMA (e.g., [5, 10, 20, 50])
-        emaPeriods?: number[] // Array of periods for EMA (e.g., [5, 10, 20, 50])
-        rsiPeriod?: number
-        macdFast?: number
-        macdSlow?: number
-        macdSignal?: number
-        bbPeriod?: number
-        bbStdDev?: number
-        stochK?: number
-        stochD?: number
-        williamsRPeriod?: number
-        atrPeriod?: number
-        adxPeriod?: number
-        cciPeriod?: number
-        mfiPeriod?: number
-        rocPeriod?: number
-        momentumPeriod?: number
-    } = {}
+    options: TechnicalIndicatorOptions = {}
 ): Promise<TechnicalIndicators> => {
     try {
         // Get historical data for the symbol
@@ -171,7 +152,79 @@ export const getTechnicalIndicators = async (
         const williamsR = indicators.williamsR(highs, lows, closes)
         const atrResult = indicators.atr(highs, lows, closes, { period: config.atrPeriod })
         const atr = atrResult.atrLine
-        const adx = new Array(closes.length).fill(0) // ADX not available, using placeholder
+        // ADX calculation: +DM, -DM, ATR, +DI, -DI, DX, then SMA of DX
+        const adxPeriod = config.adxPeriod
+        const trueRange: number[] = []
+        const plusDM: number[] = [0]
+        const minusDM: number[] = [0]
+        for (let i = 1; i < closes.length; i++) {
+          const highDiff = highs[i] - highs[i - 1]
+          const lowDiff = lows[i - 1] - lows[i]
+          trueRange.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1])))
+          plusDM.push(highDiff > lowDiff && highDiff > 0 ? highDiff : 0)
+          minusDM.push(lowDiff > highDiff && lowDiff > 0 ? lowDiff : 0)
+        }
+        trueRange.unshift(highs[0] - lows[0])
+
+        // Smoothed ATR, +DI, -DI using Wilder's smoothing (EMA with alpha = 1/period)
+        const atrSmooth: number[] = []
+        const plusDMSmooth: number[] = []
+        const minusDMSmooth: number[] = []
+        const plusDI: number[] = []
+        const minusDI: number[] = []
+        for (let i = 0; i < closes.length; i++) {
+          if (i < adxPeriod) {
+            if (i === adxPeriod - 1) {
+              let sumTR = 0, sumPDM = 0, sumMDM = 0
+              for (let j = 0; j < adxPeriod; j++) {
+                sumTR += trueRange[j]
+                sumPDM += plusDM[j]
+                sumMDM += minusDM[j]
+              }
+              atrSmooth[i] = sumTR / adxPeriod
+              plusDMSmooth[i] = sumPDM / adxPeriod
+              minusDMSmooth[i] = sumMDM / adxPeriod
+            } else {
+              atrSmooth[i] = 0
+              plusDMSmooth[i] = 0
+              minusDMSmooth[i] = 0
+            }
+          } else {
+            atrSmooth[i] = (atrSmooth[i - 1] * (adxPeriod - 1) + trueRange[i]) / adxPeriod
+            plusDMSmooth[i] = (plusDMSmooth[i - 1] * (adxPeriod - 1) + plusDM[i]) / adxPeriod
+            minusDMSmooth[i] = (minusDMSmooth[i - 1] * (adxPeriod - 1) + minusDM[i]) / adxPeriod
+          }
+          if (atrSmooth[i] !== 0) {
+            plusDI[i] = (plusDMSmooth[i] / atrSmooth[i]) * 100
+            minusDI[i] = (minusDMSmooth[i] / atrSmooth[i]) * 100
+          } else {
+            plusDI[i] = 0
+            minusDI[i] = 0
+          }
+        }
+
+        // Calculate DX
+        const dx: number[] = new Array(closes.length).fill(0)
+        for (let i = 0; i < closes.length; i++) {
+          const diDiff = Math.abs(plusDI[i] - minusDI[i])
+          const diSum = plusDI[i] + minusDI[i]
+          dx[i] = diSum !== 0 ? (diDiff / diSum) * 100 : 0
+        }
+
+        // ADX is SMA of DX over the period
+        const adxValues: number[] = []
+        for (let i = 0; i < closes.length; i++) {
+          if (i < adxPeriod * 2 - 1) {
+            adxValues[i] = 0
+          } else {
+            let sumDX = 0
+            for (let j = 0; j < adxPeriod; j++) {
+              sumDX += dx[i - j]
+            }
+            adxValues[i] = sumDX / adxPeriod
+          }
+        }
+        const adx = adxValues
         const obv = indicators.obv(closes, volumes)
         const cci = indicators.cci(highs, lows, closes)
         const mfi = indicators.mfi(highs, lows, closes, volumes)

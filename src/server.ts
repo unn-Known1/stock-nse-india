@@ -82,8 +82,21 @@ if (process.env.NODE_ENV === 'development') {
 
 const resolvers = mergeResolvers(loadedResolvers)
 
-const sslKeyPath = process.env.SSL_KEY_PATH || path.resolve(process.cwd(), 'certs/localhost-key.pem')
-const sslCertPath = process.env.SSL_CERT_PATH || path.resolve(process.cwd(), 'certs/localhost.pem')
+function isPathInsideProject(filePath: string): boolean {
+    const resolved = path.resolve(filePath)
+    const projectDir = path.resolve(process.cwd())
+    return resolved.startsWith(projectDir)
+}
+
+const rawSslKeyPath = process.env.SSL_KEY_PATH || path.resolve(process.cwd(), 'certs/localhost-key.pem')
+const rawSslCertPath = process.env.SSL_CERT_PATH || path.resolve(process.cwd(), 'certs/localhost.pem')
+
+if (!isPathInsideProject(rawSslKeyPath) || !isPathInsideProject(rawSslCertPath)) {
+    throw new Error('SSL key/cert path must be within the project directory')
+}
+
+const sslKeyPath = rawSslKeyPath
+const sslCertPath = rawSslCertPath
 
 const networkServer = isHttpsEnabled
   ? (() => {

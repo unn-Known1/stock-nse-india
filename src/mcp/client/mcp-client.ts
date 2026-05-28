@@ -82,12 +82,21 @@ export class MCPClient {
     this.availableTools = mcpTools
   }
 
+  private validateApiKey(key: string): boolean {
+    return /^sk-[A-Za-z0-9]{20,}$/.test(key)
+  }
+
   private getOpenAI(): OpenAI {
     if (!this.openaiClient) {
       const apiKey = this.config.openaiApiKey || process.env.OPENAI_API_KEY
       if (!apiKey) {
         throw new Error(
           'OpenAI API key not configured. Set OPENAI_API_KEY environment variable.'
+        )
+      }
+      if (!this.validateApiKey(apiKey)) {
+        throw new Error(
+          'OpenAI API key is invalid. Must start with "sk-" and be at least 20 characters.'
         )
       }
       this.openaiClient = new OpenAI({ apiKey })
@@ -139,6 +148,22 @@ export class MCPClient {
       description: tool.description,
       parameters: tool.inputSchema
     }))
+  }
+
+  /**
+   * Sanitize a message by removing sensitive patterns before sending to OpenAI
+   */
+  private sanitizeMessage(msg: ConversationMessage): ConversationMessage {
+    const emailPattern = /\b[\w.-]+@[\w.-]+\.\w+\b/g
+    const largeNumberPattern = /\b\d{5,}\b/g
+    const apiKeyPattern = /sk-[A-Za-z0-9]{20,}/g
+
+    let content = msg.content
+    content = content.replace(emailPattern, '[REDACTED]')
+    content = content.replace(largeNumberPattern, '[REDACTED]')
+    content = content.replace(apiKeyPattern, '[REDACTED]')
+
+    return { ...msg, content }
   }
 
   /**
@@ -245,20 +270,21 @@ export class MCPClient {
       // Add conversation history if memory is enabled
       if (shouldUseMemory && includeContext) {
         conversationContext.messages.forEach((msg: ConversationMessage) => {
-          if (msg.role === 'assistant' && msg.content) {
+          const sanitized = this.sanitizeMessage(msg)
+          if (sanitized.role === 'assistant' && sanitized.content) {
             allMessages.push({
               role: 'assistant',
-              content: msg.content
+              content: sanitized.content
             })
-          } else if (msg.role === 'user' && msg.content !== query) {
+          } else if (sanitized.role === 'user' && sanitized.content !== query) {
             allMessages.push({
               role: 'user',
-              content: msg.content
+              content: sanitized.content
             })
-          } else if (msg.role === 'system' && msg.content) {
+          } else if (sanitized.role === 'system' && sanitized.content) {
             allMessages.push({
               role: 'system',
-              content: msg.content
+              content: sanitized.content
             })
           }
         })
@@ -898,7 +924,7 @@ export class MCPClient {
    * Get client configuration
    */
   getConfig(): MCPClientConfig {
-    return { ...this.config }
+    return JSON.parse(JSON.stringify(this.config))
   }
 
   /**

@@ -7,6 +7,12 @@ import {
 } from './helpers'
 import { getMcpClient, MCPClientRequest, MCPClient } from './mcp/client/mcp-client.js'
 import { sendRouteError } from './route-errors'
+import { TechnicalIndicatorOptions } from './interface'
+import { formatLatestIndicators, formatAllIndicators } from './indicators-formatter'
+
+function validateApiKey(key: string): boolean {
+    return /^sk-[A-Za-z0-9]{20,}$/.test(key)
+}
 
 const mainRouter: Router = Router()
 
@@ -324,39 +330,6 @@ mainRouter.get('/api/allSymbols', async (_req, res) => {
         res.json(symbols)
     } catch (error) {
         sendRouteError(res, error)
-    }
-})
-
-/**
- * @openapi
- * /api/equity/{symbol}:
- *   get:
- *     description: To get details of the NSE symbol
- *     tags:
- *       - Equity
- *     produces:
- *       - application/json
- *     parameters:
- *       - name: symbol
- *         in: path
- *         description: NSE Symbol of the Equity
- *         required: true
- *         schema:
- *           type: string
- *           format: any
- *     responses:
- *       200:
- *         description: Returns a details of the NSE symbol
- *       400:
- *         description: Returns a JSON error object of API call
- */
-mainRouter.get('/api/equity/:symbol', async (req, res) => {
-    try {
-        const { symbol } = req.params;
-        const data = await nseIndia.getEquityDetails(symbol);
-        res.json(data);
-    } catch (error) {
-        sendRouteError(res, error);
     }
 })
 
@@ -779,7 +752,7 @@ mainRouter.get('/api/equity/technicalIndicators/:symbol', async (req, res) => {
         } = req.query
 
         // Parse query parameters
-        const options: any = {}
+        const options: TechnicalIndicatorOptions = {}
 
         if (period) {
             options.period = parseInt(period as string)
@@ -810,153 +783,46 @@ mainRouter.get('/api/equity/technicalIndicators/:symbol', async (req, res) => {
         // Parse showOnlyLatest flag (default: true)
         const showLatest = showOnlyLatest === undefined || showOnlyLatest === 'true'
 
-        // Helper function to round numbers to 2 decimal places
-        const roundTo2Decimals = (value: number | null): number | null => {
-            return value !== null ? Math.round(value * 100) / 100 : null
-        }
-
-        // Helper function to round array of numbers to 2 decimal places
-        const roundArrayTo2Decimals = (arr: number[]): number[] => {
-            return arr.map(value => roundTo2Decimals(value) as number)
-        }
-
         if (showLatest) {
-            // Return only the latest values
-            const latestIndicators: any = {}
-
-            // Process SMA indicators
-            latestIndicators.sma = {}
-            Object.keys(indicators.sma).forEach(key => {
-                const values = indicators.sma[key]
-                latestIndicators.sma[key] = values.length > 0 ? roundTo2Decimals(values[values.length - 1]) : null
-            })
-
-            // Process EMA indicators
-            latestIndicators.ema = {}
-            Object.keys(indicators.ema).forEach(key => {
-                const values = indicators.ema[key]
-                latestIndicators.ema[key] = values.length > 0 ? roundTo2Decimals(values[values.length - 1]) : null
-            })
-
-            // Process other indicators
-            latestIndicators.rsi = roundTo2Decimals(
-                indicators.rsi.length > 0 ? indicators.rsi[indicators.rsi.length - 1] : null
-            )
-            latestIndicators.macd = {
-                macd: roundTo2Decimals(
-                    indicators.macd.macd.length > 0 ? indicators.macd.macd[indicators.macd.macd.length - 1] : null
-                ),
-                signal: roundTo2Decimals(
-                    indicators.macd.signal.length > 0 ? indicators.macd.signal[indicators.macd.signal.length - 1] : null
-                ),
-                histogram: roundTo2Decimals(
-                    indicators.macd.histogram.length > 0 ?
-                        indicators.macd.histogram[indicators.macd.histogram.length - 1] : null
-                )
-            }
-            latestIndicators.bollingerBands = {
-                upper: roundTo2Decimals(
-                    indicators.bollingerBands.upper.length > 0 ?
-                        indicators.bollingerBands.upper[indicators.bollingerBands.upper.length - 1] : null
-                ),
-                middle: roundTo2Decimals(
-                    indicators.bollingerBands.middle.length > 0 ?
-                        indicators.bollingerBands.middle[indicators.bollingerBands.middle.length - 1] : null
-                ),
-                lower: roundTo2Decimals(
-                    indicators.bollingerBands.lower.length > 0 ?
-                        indicators.bollingerBands.lower[indicators.bollingerBands.lower.length - 1] : null
-                )
-            }
-            latestIndicators.stochastic = {
-                k: roundTo2Decimals(
-                    indicators.stochastic.k.length > 0 ?
-                        indicators.stochastic.k[indicators.stochastic.k.length - 1] : null
-                ),
-                d: roundTo2Decimals(
-                    indicators.stochastic.d.length > 0 ?
-                        indicators.stochastic.d[indicators.stochastic.d.length - 1] : null
-                )
-            }
-            latestIndicators.williamsR = roundTo2Decimals(
-                indicators.williamsR.length > 0 ? indicators.williamsR[indicators.williamsR.length - 1] : null
-            )
-            latestIndicators.atr = roundTo2Decimals(
-                indicators.atr.length > 0 ? indicators.atr[indicators.atr.length - 1] : null
-            )
-            latestIndicators.adx = roundTo2Decimals(
-                indicators.adx.length > 0 ? indicators.adx[indicators.adx.length - 1] : null
-            )
-            latestIndicators.obv = roundTo2Decimals(
-                indicators.obv.length > 0 ? indicators.obv[indicators.obv.length - 1] : null
-            )
-            latestIndicators.cci = roundTo2Decimals(
-                indicators.cci.length > 0 ? indicators.cci[indicators.cci.length - 1] : null
-            )
-            latestIndicators.mfi = roundTo2Decimals(
-                indicators.mfi.length > 0 ? indicators.mfi[indicators.mfi.length - 1] : null
-            )
-            latestIndicators.roc = roundTo2Decimals(
-                indicators.roc.length > 0 ? indicators.roc[indicators.roc.length - 1] : null
-            )
-            latestIndicators.momentum = roundTo2Decimals(
-                indicators.momentum.length > 0 ? indicators.momentum[indicators.momentum.length - 1] : null
-            )
-            latestIndicators.ad = roundTo2Decimals(
-                indicators.ad.length > 0 ? indicators.ad[indicators.ad.length - 1] : null
-            )
-            latestIndicators.vwap = roundTo2Decimals(
-                indicators.vwap.length > 0 ? indicators.vwap[indicators.vwap.length - 1] : null
-            )
-
-            res.json(latestIndicators)
+            res.json(formatLatestIndicators(indicators))
         } else {
-            // Return all values with 2 decimal precision
-            const roundedIndicators: any = {}
-
-            // Process SMA indicators
-            roundedIndicators.sma = {}
-            Object.keys(indicators.sma).forEach(key => {
-                roundedIndicators.sma[key] = roundArrayTo2Decimals(indicators.sma[key])
-            })
-
-            // Process EMA indicators
-            roundedIndicators.ema = {}
-            Object.keys(indicators.ema).forEach(key => {
-                roundedIndicators.ema[key] = roundArrayTo2Decimals(indicators.ema[key])
-            })
-
-            // Process other indicators
-            roundedIndicators.rsi = roundArrayTo2Decimals(indicators.rsi)
-            roundedIndicators.macd = {
-                macd: roundArrayTo2Decimals(indicators.macd.macd),
-                signal: roundArrayTo2Decimals(indicators.macd.signal),
-                histogram: roundArrayTo2Decimals(indicators.macd.histogram)
-            }
-            roundedIndicators.bollingerBands = {
-                upper: roundArrayTo2Decimals(indicators.bollingerBands.upper),
-                middle: roundArrayTo2Decimals(indicators.bollingerBands.middle),
-                lower: roundArrayTo2Decimals(indicators.bollingerBands.lower)
-            }
-            roundedIndicators.stochastic = {
-                k: roundArrayTo2Decimals(indicators.stochastic.k),
-                d: roundArrayTo2Decimals(indicators.stochastic.d)
-            }
-            roundedIndicators.williamsR = roundArrayTo2Decimals(indicators.williamsR)
-            roundedIndicators.atr = roundArrayTo2Decimals(indicators.atr)
-            roundedIndicators.adx = roundArrayTo2Decimals(indicators.adx)
-            roundedIndicators.obv = roundArrayTo2Decimals(indicators.obv)
-            roundedIndicators.cci = roundArrayTo2Decimals(indicators.cci)
-            roundedIndicators.mfi = roundArrayTo2Decimals(indicators.mfi)
-            roundedIndicators.roc = roundArrayTo2Decimals(indicators.roc)
-            roundedIndicators.momentum = roundArrayTo2Decimals(indicators.momentum)
-            roundedIndicators.ad = roundArrayTo2Decimals(indicators.ad)
-            roundedIndicators.vwap = roundArrayTo2Decimals(indicators.vwap)
-
-            res.json(roundedIndicators)
+            res.json(formatAllIndicators(indicators))
         }
     } catch (error) {
         sendRouteError(res, error)
+    }
+})
+
+/**
+ * @openapi
+ * /api/equity/{symbol}:
+ *   get:
+ *     description: To get details of the NSE symbol
+ *     tags:
+ *       - Equity
+ *     produces:
+ *       - application/json
+ *     parameters:
+ *       - name: symbol
+ *         in: path
+ *         description: NSE Symbol of the Equity
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: any
+ *     responses:
+ *       200:
+ *         description: Returns a details of the NSE symbol
+ *       400:
+ *         description: Returns a JSON error object of API call
+ */
+mainRouter.get('/api/equity/:symbol', async (req, res) => {
+    try {
+        const { symbol } = req.params;
+        const data = await nseIndia.getEquityDetails(symbol);
+        res.json(data);
+    } catch (error) {
+        sendRouteError(res, error);
     }
 })
 
@@ -1585,9 +1451,15 @@ mainRouter.post('/api/mcp/query', async (req, res) => {
         // Generate sessionId if not provided to enable memory features
         const sessionId = providedSessionId || `auto_session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-        if (!process.env.OPENAI_API_KEY) {
+        const apiKey = process.env.OPENAI_API_KEY
+        if (!apiKey) {
             return res.status(500).json({
                 error: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+            })
+        }
+        if (!validateApiKey(apiKey)) {
+            return res.status(500).json({
+                error: 'OpenAI API key is invalid. Must start with "sk-" and be at least 20 characters.'
             })
         }
 
@@ -1622,10 +1494,7 @@ mainRouter.post('/api/mcp/query', async (req, res) => {
             getMcpClient().setDebugLogging(originalDebugState)
         }
     } catch (error) {
-        console.error('MCP Query Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -1666,10 +1535,7 @@ mainRouter.get('/api/mcp/tools', async (_req, res) => {
         const tools = getMcpClient().getAvailableTools()
         res.json({ tools })
     } catch (error) {
-        console.error('MCP Tools Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -1703,10 +1569,18 @@ mainRouter.get('/api/mcp/tools', async (_req, res) => {
  */
 mainRouter.get('/api/mcp/test', async (_req, res) => {
     try {
-        if (!process.env.OPENAI_API_KEY) {
+        const testApiKey = process.env.OPENAI_API_KEY
+        if (!testApiKey) {
             return res.status(500).json({
                 status: 'error',
                 message: 'OpenAI API key not configured',
+                timestamp: new Date().toISOString()
+            })
+        }
+        if (!validateApiKey(testApiKey)) {
+            return res.status(500).json({
+                status: 'error',
+                message: 'OpenAI API key is invalid. Must start with "sk-" and be at least 20 characters.',
                 timestamp: new Date().toISOString()
             })
         }
@@ -1727,12 +1601,7 @@ mainRouter.get('/api/mcp/test', async (_req, res) => {
             })
         }
     } catch (error) {
-        console.error('MCP Test Error:', error)
-        res.status(500).json({
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Test failed',
-            timestamp: new Date().toISOString()
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -1777,10 +1646,7 @@ mainRouter.get('/api/mcp/functions', async (_req, res) => {
         const functions = getMcpClient().getOpenAIFunctions()
         res.json({ functions })
     } catch (error) {
-        console.error('MCP Functions Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -1844,10 +1710,7 @@ mainRouter.get('/api/mcp/session/:sessionId', async (req, res) => {
 
         res.json(sessionInfo)
     } catch (error) {
-        console.error('Get Session Info Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -1920,10 +1783,7 @@ mainRouter.get('/api/mcp/session/:sessionId/history', async (req, res) => {
 
         res.json({ messages: history })
     } catch (error) {
-        console.error('Get Conversation History Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -1995,10 +1855,7 @@ mainRouter.put('/api/mcp/session/:sessionId/preferences', async (req, res) => {
             sessionId
         })
     } catch (error) {
-        console.error('Update Preferences Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2033,10 +1890,7 @@ mainRouter.delete('/api/mcp/session/:sessionId/clear', async (req, res) => {
             sessionId
         })
     } catch (error) {
-        console.error('Clear Session Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2073,10 +1927,7 @@ mainRouter.get('/api/mcp/session/:sessionId/export', async (req, res) => {
 
         res.json(sessionData)
     } catch (error) {
-        console.error('Export Session Data Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2100,10 +1951,7 @@ mainRouter.post('/api/mcp/cleanup', async (_req, res) => {
             timestamp: new Date().toISOString()
         })
     } catch (error) {
-        console.error('Cleanup Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2155,10 +2003,7 @@ mainRouter.get('/api/mcp/session/:sessionId/context-stats', async (req, res) => 
 
         res.json(stats)
     } catch (error) {
-        console.error('Get Context Stats Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2209,10 +2054,7 @@ mainRouter.post('/api/mcp/session/:sessionId/summarize', async (req, res) => {
             message: 'Context summarization completed successfully'
         })
     } catch (error) {
-        console.error('Context Summarization Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2239,10 +2081,7 @@ mainRouter.get('/api/mcp/session/:sessionId/context-window', async (req, res) =>
         const config = getMcpClient().getContextWindowConfig()
         res.json(config)
     } catch (error) {
-        console.error('Get Context Window Config Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2296,10 +2135,7 @@ mainRouter.put('/api/mcp/session/:sessionId/context-window', async (req, res) =>
             config: getMcpClient().getContextWindowConfig()
         })
     } catch (error) {
-        console.error('Update Context Window Config Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2345,10 +2181,7 @@ mainRouter.get('/api/mcp/session/:sessionId/summarization/last', async (req, res
 
         res.json(lastSummarization)
     } catch (error) {
-        console.error('Get Last Summarization Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2392,10 +2225,7 @@ mainRouter.get('/api/mcp/session/:sessionId/summarization/history', async (req, 
             history
         })
     } catch (error) {
-        console.error('Get Summarization History Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2435,10 +2265,7 @@ mainRouter.get('/api/mcp/session/:sessionId/summarization/summary', async (req, 
 
         res.json(summary)
     } catch (error) {
-        console.error('Get Summarization Summary Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 
@@ -2515,10 +2342,7 @@ mainRouter.get('/api/mcp/session/:sessionId/openai-messages', async (req, res) =
             note: 'This is exactly what OpenAI would receive for the next query'
         })
     } catch (error) {
-        console.error('Get OpenAI Messages Error:', error)
-        res.status(500).json({
-            error: error instanceof Error ? error.message : 'Internal server error'
-        })
+        sendRouteError(res, error)
     }
 })
 

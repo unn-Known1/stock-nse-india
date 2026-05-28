@@ -6,30 +6,49 @@ import chalk from 'chalk'
 import ohlc from 'ohlc'
 import moment from 'moment'
 import asciichart from 'asciichart'
+import type { IndexEquityInfo } from '../interface'
 
 const rupee = '₹'
 const nse = new NseIndia()
+
+interface CLIArgs {
+    symbol?: string
+    indexSymbol?: string
+}
+
+interface IndexOverviewItem {
+    key: string
+    indexSymbol: string
+    last: number
+    previousClose: number
+    variation: number
+    percentChange: number
+    open: number
+    high: number
+    low: number
+}
+
+interface OhlcPoint {
+    Close: number
+    Volume: number
+}
 
 export async function showIndexOverview(): Promise<void> {
     const spinner = ora()
     spinner.text = 'Loading Indices deatils'
     spinner.start()
-    const { data: allIndexData } = await nse.getDataByEndpoint(ApiList.ALL_INDICES)
+    const { data: allIndexData } = await nse.getDataByEndpoint(ApiList.ALL_INDICES) as { data: IndexOverviewItem[] }
     spinner.text = ''
     spinner.stop()
     const indexTypes = [
         'BROAD MARKET INDICES',
         'SECTORAL INDICES',
-        // 'STRATEGY INDICES',
-        // 'THEMATIC INDICES',
-        // 'FIXED INCOME INDICES'
     ]
     indexTypes.forEach(indexType => {
         const allIndexTableData = allIndexData
-            .filter((item: any) => item.key === indexType)
-            .map((item: any) => {
+            .filter((item: IndexOverviewItem) => item.key === indexType)
+            .map((item: IndexOverviewItem) => {
                 return {
-                    // 'Index Name': item.index,
                     'Index Symbol': item.indexSymbol,
                     'Last Price': item.last,
                     'Previous Close': item.previousClose,
@@ -44,16 +63,16 @@ export async function showIndexOverview(): Promise<void> {
         console.table(allIndexTableData)
     })
 }
-export async function showIndexDetails(argv: any): Promise<void> {
+export async function showIndexDetails(argv: CLIArgs): Promise<void> {
     const { indexSymbol: index } = argv
     const spinner = ora()
     spinner.text = `Loading ${index} Details`
     spinner.start()
-    const { data } = await nse.getEquityStockIndices(index)
+    const { data } = await nse.getEquityStockIndices(index!)
     spinner.text = ''
     spinner.stop()
     if (data) {
-        const indexTableData = data.map((item: any) => {
+        const indexTableData = data.map((item: IndexEquityInfo) => {
             return {
                 'Symbol': item.symbol,
                 'Open': item.open,
@@ -75,13 +94,13 @@ export async function showMarketStatus(): Promise<void> {
     const spinner = ora()
     spinner.text = 'Loading Market status'
     spinner.start()
-    const { marketState } = await nse.getDataByEndpoint(ApiList.MARKET_STATUS)
+    const { marketState } = await nse.getDataByEndpoint(ApiList.MARKET_STATUS) as { marketState: Record<string, unknown>[] }
     spinner.text = ''
     spinner.stop()
     console.table(marketState);
 }
 
-export async function showEquityDetails(argv: any): Promise<void> {
+export async function showEquityDetails(argv: CLIArgs): Promise<void> {
     const {
         symbol
     } = argv
@@ -94,11 +113,11 @@ export async function showEquityDetails(argv: any): Promise<void> {
             priceInfo,
             metadata,
             securityInfo
-        } = await nse.getEquityDetails(symbol)
+        } = await nse.getEquityDetails(symbol!)
         spinner.text = 'Loading Trading details'
         const {
             marketDeptOrderBook
-        } = await nse.getEquityTradeInfo(symbol)
+        } = await nse.getEquityTradeInfo(symbol!)
         spinner.text = ''
         spinner.stop()
         if (info && marketDeptOrderBook) {
@@ -107,7 +126,7 @@ export async function showEquityDetails(argv: any): Promise<void> {
             } = marketDeptOrderBook
             const changePrice = Number(priceInfo.change.toFixed(2))
             const changePercent = Number(priceInfo.pChange.toFixed(2))
-            const tableData = {
+            const tableData: Record<string, unknown> = {
                 'Last Updated Time': metadata.lastUpdateTime,
                 'Symbol': symbol,
                 'Company Name': info.companyName,
@@ -149,14 +168,14 @@ export async function showEquityDetails(argv: any): Promise<void> {
         } else {
             console.log(chalk.red('Please provide valid NSE symbol.'));
         }
-    } catch (error:any) {
+    } catch (error: unknown) {
         spinner.text = ''
         spinner.stop()
-        console.log(chalk.red(error.message))
+        console.log(chalk.red(error instanceof Error ? error.message : String(error)))
     }
 }
 
-export async function showHistorical(argv: any): Promise<void> {
+export async function showHistorical(argv: CLIArgs): Promise<void> {
     console.time('Done In')
     const {
         symbol
@@ -165,10 +184,10 @@ export async function showHistorical(argv: any): Promise<void> {
     spinner.text = 'Loading Historical Data'
     spinner.start()
     const startDate = moment().subtract(3, 'months').format('YYYY-MM-DD')
-    const results = await nse.getEquityHistoricalData(symbol, { start: new Date(startDate), end: new Date() })
+    const results = await nse.getEquityHistoricalData(symbol!, { start: new Date(startDate), end: new Date() })
     spinner.text = ''
     spinner.stop()
-    const ohlcData: any[] = []
+    const ohlcData: [string, number, number, number, number, number][] = []
     results.forEach(({
         data: historicalData
     }) => {
@@ -185,9 +204,9 @@ export async function showHistorical(argv: any): Promise<void> {
     })
     const fullOhlcData = ohlc(ohlcData)
     console.log();
-    const ohlcDataFromStartDate = fullOhlcData.start(startDate).sma(5).toDaily()
-    const CloseData = ohlcDataFromStartDate.map((obj: any) => obj.Close)
-    const Volume = ohlcDataFromStartDate.map((obj: any) => obj.Volume / 100000)
+    const ohlcDataFromStartDate: OhlcPoint[] = fullOhlcData.start(startDate).sma(5).toDaily()
+    const CloseData = ohlcDataFromStartDate.map((obj: OhlcPoint) => obj.Close)
+    const Volume = ohlcDataFromStartDate.map((obj: OhlcPoint) => obj.Volume / 100000)
     const chartConfig = {
         height: 10
     }

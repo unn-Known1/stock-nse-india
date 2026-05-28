@@ -967,6 +967,30 @@ export interface DailyReport {
 }
 
 /**
+ * Configuration options for technical indicator calculations
+ */
+export interface TechnicalIndicatorOptions {
+  period?: number
+  smaPeriods?: number[]
+  emaPeriods?: number[]
+  rsiPeriod?: number
+  macdFast?: number
+  macdSlow?: number
+  macdSignal?: number
+  bbPeriod?: number
+  bbStdDev?: number
+  stochK?: number
+  stochD?: number
+  williamsRPeriod?: number
+  atrPeriod?: number
+  adxPeriod?: number
+  cciPeriod?: number
+  mfiPeriod?: number
+  rocPeriod?: number
+  momentumPeriod?: number
+}
+
+/**
  * Technical indicators including SMA, EMA, RSI, MACD, Bollinger Bands, etc.
  */
 export interface TechnicalIndicators {

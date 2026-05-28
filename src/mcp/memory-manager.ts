@@ -61,6 +61,7 @@ export interface MemoryConfig {
   maxConversationHistory: number
   maxRecentQueries: number
   sessionTimeoutMinutes: number
+  maxSessions: number
   persistToFile: boolean
   memoryFilePath: string
   contextWindowConfig: Partial<ContextWindowConfig>
@@ -71,12 +72,15 @@ export class MemoryManager {
   private config: MemoryConfig
   private memoryFilePath: string
   private contextSummarizer?: ContextSummarizer
+  private pendingWrite: ReturnType<typeof setTimeout> | null = null
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null
 
   constructor(config: Partial<MemoryConfig> = {}) {
     this.config = {
       maxConversationHistory: 50,
       maxRecentQueries: 20,
       sessionTimeoutMinutes: 30,
+      maxSessions: 100,
       persistToFile: true,
       memoryFilePath: './memory-data.json',
       contextWindowConfig: {
@@ -92,6 +96,12 @@ export class MemoryManager {
 
     // Load any previously saved memory data synchronously so it's available immediately
     this.loadMemoryFromFile()
+
+    // Periodic cleanup of expired sessions every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupExpiredSessions()
+      this.scheduleMemorySave()
+    }, 5 * 60 * 1000)
   }
 
   private getContextSummarizer(): ContextSummarizer {
@@ -114,10 +124,8 @@ export class MemoryManager {
    * Create or get existing user session
    */
   getOrCreateSession(sessionId: string, userId?: string): UserSession {
-    let session = this.sessions.get(sessionId)
-    
-    if (!session) {
-      session = {
+    if (!this.sessions.has(sessionId)) {
+      const session: UserSession = {
         sessionId,
         userId,
         startTime: new Date().toISOString(),
@@ -143,12 +151,27 @@ export class MemoryManager {
         }
       }
       this.sessions.set(sessionId, session)
+
+      // Evict oldest session if over limit
+      if (this.sessions.size > this.config.maxSessions) {
+        let oldestId = sessionId
+        let oldestTime = Date.now()
+        for (const [id, s] of this.sessions.entries()) {
+          const activity = new Date(s.lastActivity).getTime()
+          if (activity < oldestTime) {
+            oldestTime = activity
+            oldestId = id
+          }
+        }
+        if (oldestId !== sessionId) {
+          this.sessions.delete(oldestId)
+        }
+      }
     } else {
-      // Update last activity
-      session.lastActivity = new Date().toISOString()
+      this.sessions.get(sessionId)!.lastActivity = new Date().toISOString()
     }
 
-    return session
+    return this.sessions.get(sessionId)!
   }
 
   /**
@@ -408,22 +431,47 @@ export class MemoryManager {
   }
 
   /**
-   * Save memory to file (synchronous to guarantee persistence before returning)
+   * Schedule a debounced async write (500ms debounce)
    */
-  private saveMemoryToFile(): void {
+  private scheduleMemorySave(): void {
+    if (!this.config.persistToFile) return
+
+    if (this.pendingWrite) {
+      clearTimeout(this.pendingWrite)
+    }
+
+    this.pendingWrite = setTimeout(() => {
+      this.pendingWrite = null
+      this.flushMemoryToFile()
+    }, 500)
+  }
+
+  /**
+   * Immediate async write with atomic file rotation
+   */
+  async flushMemoryToFile(): Promise<void> {
     if (!this.config.persistToFile) return
 
     try {
+      this.cleanupExpiredSessions()
       const memoryData = {
         sessions: Object.fromEntries(this.sessions),
         config: this.config,
         lastSaved: new Date().toISOString()
       }
-      
-      fs.writeFileSync(this.memoryFilePath, JSON.stringify(memoryData, null, 2))
+      const tmpPath = this.memoryFilePath + '.tmp'
+      await fs.promises.writeFile(tmpPath, JSON.stringify(memoryData, null, 2), 'utf-8')
+      await fs.promises.rename(tmpPath, this.memoryFilePath)
     } catch (error) {
       console.error('Failed to save memory to file:', error)
     }
+  }
+
+  /**
+   * Save memory to file (debounced async write)
+   */
+  private saveMemoryToFile(): void {
+    this.scheduleMemorySave()
   }
 
   /**
@@ -438,6 +486,7 @@ export class MemoryManager {
       
       if (memoryData.sessions) {
         this.sessions = new Map(Object.entries(memoryData.sessions))
+        this.cleanupExpiredSessions()
       }
     } catch (error: any) {
       // If file doesn't exist, start fresh silently; otherwise log a warning

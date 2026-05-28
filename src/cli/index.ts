@@ -9,6 +9,7 @@ import {
     showIndexOverview
 } from './api'
 import yargs from 'yargs'
+import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { MCPServer } from '../mcp/server/mcp-server.js'
 
 // MCP Server handler function
@@ -39,36 +40,48 @@ function startMCPServer() {
     }
 }
 
+interface IndexArgs {
+    indexSymbol?: string
+}
+
+interface SymbolArgs {
+    symbol: string
+}
+
 const _argv = yargs
     .command('$0', 'the default command', {}, showMarketStatus)
-    .command('equity <symbol>', 'Get details of the symbol', (yargsBuilder: any) => {
+    .command('equity <symbol>', 'Get details of the symbol', (yargsBuilder: Argv) => {
         yargsBuilder.positional('symbol', {
             type: 'string',
             demandOption: true,
             describe: 'Symbol of NSE equities.'
         })
-    }, showEquityDetails)
-    .command('historical <symbol>', 'Get historical chart of the symbol', (yargsBuilder: any) => {
+    }, (argv: ArgumentsCamelCase<SymbolArgs>) => {
+        showEquityDetails(argv)
+    })
+    .command('historical <symbol>', 'Get historical chart of the symbol', (yargsBuilder: Argv) => {
         yargsBuilder.positional('symbol', {
             type: 'string',
             demandOption: true,
             describe: 'Symbol of NSE equities.'
         })
-    }, showHistorical)
-    .command('index [indexSymbol]', 'Get details of the index.', (yargsBuilder: any) => {
+    }, (argv: ArgumentsCamelCase<SymbolArgs>) => {
+        showHistorical(argv)
+    })
+    .command('index [indexSymbol]', 'Get details of the index.', (yargsBuilder: Argv) => {
         yargsBuilder.positional('indexSymbol', {
             type: 'string',
             demandOption: true,
             describe: 'Symbol of NSE Indices.'
         })
-    }, (argv: any) => {
+    }, (argv: ArgumentsCamelCase<IndexArgs>) => {
         const { indexSymbol: index } = argv
         if (index)
             showIndexDetails(argv)
         else
             showIndexOverview()
     })
-    .command('mcp', 'Start MCP stdio server', (yargsBuilder: any) => {
+    .command('mcp', 'Start MCP stdio server', (yargsBuilder: Argv) => {
         yargsBuilder
             .example('$0 mcp', 'Start MCP stdio server')
             .example('npx . mcp', 'Start MCP stdio server via npx')

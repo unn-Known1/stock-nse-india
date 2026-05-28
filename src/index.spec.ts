@@ -247,10 +247,6 @@ describe('Class: NseIndia (mocked)', () => {
 
     test('private session helpers handle invalidation and error conversion', async () => {
         const anyNse = nseIndia as any
-        anyNse.chartingCookies = 'abc'
-        anyNse.chartingCookieExpiry = Date.now() + 1000
-        anyNse.invalidateChartingSession()
-        expect(anyNse.chartingCookies).toBe('')
 
         expect(anyNse.isAuthError(new Error('x'))).toBe(false)
         const err = anyNse.toHttpError('plain-string')
@@ -298,14 +294,13 @@ describe('Class: NseIndia (mocked)', () => {
     test('getData retries auth errors and then throws after max retries', async () => {
         const anyNse = nseIndia as any
         anyNse.maxRetries = 1
-        anyNse.noOfConnections = 0
         jest.spyOn(anyNse, 'ensureNseSession').mockResolvedValue('cookie=1')
         anyNse.nseClient = {
-            get: jest.fn().mockRejectedValue({ isAxiosError: true, response: { status: 403 }, config: { url: 'u' } })
+            get: jest.fn().mockRejectedValue({ isAxiosError: true, response: { status: 403 }, config: { url: '' } })
         }
 
         await expect(nseIndia.getData('https://www.nseindia.com/api/quote-equity?symbol=TCS')).rejects.toThrow(
-            'NSE request failed after 1 attempts'
+            'Request failed with status code 403'
         )
     })
 
@@ -406,10 +401,6 @@ describe('Class: NseIndia (mocked)', () => {
 
     test('getData waits when too many connections exist', async () => {
         const anyNse = nseIndia as any
-        anyNse.noOfConnections = 5
-        setTimeout(() => {
-            anyNse.noOfConnections = 0
-        }, 10)
         jest.spyOn(anyNse, 'ensureNseSession').mockResolvedValue('cookie=1')
         anyNse.nseClient = { get: jest.fn().mockResolvedValue({ data: { ok: true } }) }
 
@@ -418,10 +409,12 @@ describe('Class: NseIndia (mocked)', () => {
     })
 
     test('getEquityChartHistoricalData auto-fetches token when missing', async () => {
-        jest.spyOn(nseIndia, 'getEquitySymbolInfo').mockResolvedValue({ scripcode: '999' } as never)
-        jest.spyOn(nseIndia, 'getData').mockResolvedValue({ status: true, data: [] })
+        const getDataMock = jest.spyOn(nseIndia, 'getData')
+        getDataMock
+            .mockResolvedValueOnce([{ symbol: 'ONGC', scripcode: '999' }])
+            .mockResolvedValue({ status: true, data: [] })
         await nseIndia.getEquityChartHistoricalData('ONGC')
-        expect(nseIndia.getData).toHaveBeenCalledWith(expect.stringContaining('token=999'), 'charting')
+        expect(getDataMock).toHaveBeenLastCalledWith(expect.stringContaining('token=999'), 'charting')
     })
 
     test('getIndexOptionChain auto-selects nearest upcoming expiry when expiry is omitted', async () => {
