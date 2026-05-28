@@ -30,20 +30,61 @@
 
   <!-- ═══ MARKET OVERVIEW ═══ -->
   <div id="tab-market" class="tab-content active">
+
+    <!-- Market Pulse -->
+    <div class="pulse-bar" id="mo-pulse-bar">
+      <div class="pulse-item"><span class="pulse-label">Market</span><span class="pulse-value" id="mo-pulse-status">—</span></div>
+      <div class="pulse-item"><span class="pulse-label">NIFTY 50</span><span class="pulse-value" id="mo-pulse-nifty">—</span></div>
+      <div class="pulse-item"><span class="pulse-label">Advance / Decline</span><span class="pulse-value" id="mo-pulse-ad">—</span></div>
+      <div class="pulse-item"><span class="pulse-label">India VIX</span><span class="pulse-value" id="mo-pulse-vix">—</span></div>
+      <div class="pulse-item"><span class="pulse-label">Updated</span><span class="pulse-value pulse-time" id="mo-pulse-time">—</span></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="mo-controls">
+      <button class="btn btn-sm" id="mo-refresh">⟳ Refresh</button>
+      <label class="auto-refresh-label"><input type="checkbox" id="mo-auto-refresh"> Auto-refresh (30s)</label>
+      <span class="mo-status-msg" id="mo-status-msg"></span>
+    </div>
+
+    <!-- Key Indices -->
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Market Overview</span>
-        <button class="btn btn-sm" id="mo-refresh">⟳ Refresh</button>
+        <span class="card-title">Key Indices</span>
       </div>
-      <div class="card-grid">
-        <div class="card"><div class="card-title">Market Status</div><div id="mo-status"></div></div>
-        <div class="card"><div class="card-title">Market Turnover</div><div id="mo-turnover"></div></div>
-        <div class="card"><div class="card-title">All Indices</div><div id="mo-indices"></div></div>
-        <div class="card"><div class="card-title">Trading Holidays</div><div id="mo-holidays-t"></div></div>
-        <div class="card"><div class="card-title">Clearing Holidays</div><div id="mo-holidays-c"></div></div>
-        <div class="card"><div class="card-title">Glossary</div><div id="mo-glossary"></div></div>
+      <div class="key-indices-grid" id="mo-key-indices"></div>
+    </div>
+
+    <!-- All Indices -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">All Indices</span>
+        <div class="card-header-actions">
+          <input type="text" id="mo-indices-filter" placeholder="Filter indices..." class="filter-input-sm">
+          <button class="btn btn-sm" onclick="exportCSV('mo-all-indices','all-indices')">CSV</button>
+          <button class="btn btn-sm" onclick="exportJSON('mo-all-indices','all-indices')">JSON</button>
+        </div>
+      </div>
+      <div id="mo-all-indices"></div>
+    </div>
+
+    <!-- Two-column layout for Holidays + Turnover -->
+    <div class="card-grid-2col">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Trading Holidays</span>
+          <button class="btn btn-sm" onclick="exportCSV('mo-holidays-t','trading-holidays')">CSV</button>
+        </div>
+        <div id="mo-holidays-t"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Market Turnover</span>
+        </div>
+        <div id="mo-turnover"></div>
       </div>
     </div>
+
   </div>
 
   <!-- ═══ STOCK LOOKUP ═══ -->
@@ -52,6 +93,8 @@
       <div class="card-header">
         <span class="card-title">Stock Lookup</span>
       </div>
+
+      <!-- Search row -->
       <div class="controls">
         <div class="control-group">
           <label>Symbol</label>
@@ -60,16 +103,53 @@
             <div id="stock-suggestions" class="suggestions"></div>
           </div>
         </div>
-        <button class="btn btn-primary" id="stock-go">Get Data</button>
+        <button class="btn btn-primary" id="stock-go">Search</button>
       </div>
-      <div class="control-group" style="margin-bottom:8px">
-        <label>Filter results</label>
-        <input type="text" id="stock-filter" placeholder="Search within table..." style="max-width:300px">
+
+      <!-- Recent tickers -->
+      <div id="stock-recents" class="recents-bar" style="display:none"></div>
+
+      <!-- Summary bar (appears after search) -->
+      <div id="stock-summary" class="stock-summary" style="display:none"></div>
+
+      <!-- Two-column: Details + Trade Info -->
+      <div class="card-grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Company Details</span>
+            <div>
+              <button class="btn btn-sm" onclick="exportJSON('stock-details','equity-details')">JSON</button>
+            </div>
+          </div>
+          <div id="stock-details" class="empty-msg">Search for a symbol above</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Price Snapshot</span>
+          </div>
+          <div id="stock-price" class="empty-msg">Search for a symbol above</div>
+        </div>
       </div>
-      <div class="card-grid">
-        <div class="card"><div class="card-title">Details <button class="btn btn-sm" style="float:right" onclick="exportCSV('stock-details','equity-details')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('stock-details','equity-details')">JSON</button></div><div id="stock-details" class="empty-msg">Select a symbol above</div></div>
-        <div class="card"><div class="card-title">Trade Info <button class="btn btn-sm" style="float:right" onclick="exportCSV('stock-trade','trade-info')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('stock-trade','trade-info')">JSON</button></div><div id="stock-trade" class="empty-msg">Select a symbol above</div></div>
-        <div class="card"><div class="card-title">Intraday <button class="btn btn-sm" style="float:right" onclick="exportCSV('stock-intraday','intraday')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('stock-intraday','intraday')">JSON</button></div><div id="stock-intraday" class="empty-msg">Select a symbol above</div></div>
+
+      <!-- Order Book -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Order Book</span>
+          <button class="btn btn-sm" onclick="exportJSON('stock-trade','trade-info')">JSON</button>
+        </div>
+        <div id="stock-trade" class="empty-msg">Search for a symbol above</div>
+      </div>
+
+      <!-- Intraday -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Intraday</span>
+          <div class="card-header-actions">
+            <button class="btn btn-sm" onclick="exportCSV('stock-intraday','intraday')">CSV</button>
+            <button class="btn btn-sm" onclick="exportJSON('stock-intraday','intraday')">JSON</button>
+          </div>
+        </div>
+        <div id="stock-intraday" class="empty-msg">Search for a symbol above</div>
       </div>
     </div>
   </div>
@@ -85,13 +165,43 @@
           <label>Index</label>
           <select id="index-select" style="min-width:200px"><option value="">Loading...</option></select>
         </div>
-        <button class="btn btn-primary" id="index-go">Get Data</button>
+        <button class="btn btn-primary" id="index-go">Explore</button>
+        <div class="control-group" style="margin-left:auto">
+          <div id="ix-loading" style="font-size:12px;color:var(--text-secondary)"></div>
+        </div>
       </div>
-      <div id="index-loading"></div>
-      <div class="card-grid">
-        <div class="card"><div class="card-title">Constituent Stocks <button class="btn btn-sm" style="float:right" onclick="exportCSV('index-stocks','index-stocks')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('index-stocks','index-stocks')">JSON</button></div><div id="index-stocks" class="empty-msg">Select an index above</div></div>
-        <div class="card"><div class="card-title">Gainers & Losers <button class="btn btn-sm" style="float:right" onclick="exportCSV('index-gl','gainers-losers')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('index-gl','gainers-losers')">JSON</button></div><div id="index-gl" class="empty-msg">Select an index above</div></div>
-        <div class="card"><div class="card-title">Most Active <button class="btn btn-sm" style="float:right" onclick="exportCSV('index-active','most-active')">CSV</button><button class="btn btn-sm" style="float:right;margin-right:4px" onclick="exportJSON('index-active','most-active')">JSON</button></div><div id="index-active" class="empty-msg">Select an index above</div></div>
+
+      <!-- Index Summary Bar -->
+      <div id="ix-summary" class="stock-summary" style="display:none"></div>
+
+      <!-- Two-column: Constituents + Gainers/Losers -->
+      <div class="card-grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Constituent Stocks</span>
+            <div class="card-header-actions">
+              <input type="text" id="ix-filter" placeholder="Filter..." class="filter-input-sm">
+              <button class="btn btn-sm" onclick="exportCSV('index-stocks','constituents')">CSV</button>
+            </div>
+          </div>
+          <div id="index-stocks" class="empty-msg">Select an index above</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Gainers & Losers</span>
+            <button class="btn btn-sm" onclick="exportJSON('index-gl','gainers-losers')">JSON</button>
+          </div>
+          <div id="index-gl" class="empty-msg">Select an index above</div>
+        </div>
+      </div>
+
+      <!-- Most Active -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Most Active</span>
+          <button class="btn btn-sm" onclick="exportJSON('index-active','most-active')">JSON</button>
+        </div>
+        <div id="index-active" class="empty-msg">Select an index above</div>
       </div>
     </div>
   </div>
@@ -125,6 +235,14 @@
         </div>
         <button class="btn btn-primary" id="opt-go">Get Data</button>
       </div>
+
+      <!-- Underlying value bar -->
+      <div id="opt-underlying" class="stock-summary" style="display:none"></div>
+
+      <!-- Expiry selector -->
+      <div id="opt-expiries" class="expiry-bar" style="display:none"></div>
+
+      <!-- Option Chain Table -->
       <div id="opt-result" class="empty-msg">Select a symbol/index above</div>
     </div>
   </div>
@@ -160,8 +278,13 @@
             <option value="60">60</option>
           </select>
         </div>
-        <button class="btn btn-primary" id="chart-go">Get Data</button>
+        <button class="btn btn-primary" id="chart-go">Load Data</button>
       </div>
+
+      <!-- Summary bar -->
+      <div id="chart-summary" class="stock-summary" style="display:none"></div>
+
+      <!-- OHLC candles -->
       <div id="chart-result" class="empty-msg">Select a symbol above</div>
     </div>
   </div>
@@ -184,31 +307,42 @@
           <label>Period (days)</label>
           <input type="number" id="tech-period" value="200" min="20" max="1000" style="width:80px">
         </div>
-        <div class="control-group">
-          <label>Show latest only</label>
-          <input type="checkbox" id="tech-latest" checked>
-        </div>
-        <button class="btn btn-primary" id="tech-go">Calculate</button>
+        <button class="btn btn-primary" id="tech-go">Analyze</button>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">
-        <label style="font-size:12px"><input type="checkbox" id="tech-sma" checked> SMA <input type="text" id="tech-sma-p" value="5,10,20,50,100,200" style="width:140px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-ema" checked> EMA <input type="text" id="tech-ema-p" value="5,10,20,50,100,200" style="width:140px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-rsi" checked> RSI <input type="number" id="tech-rsi-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-bb" checked> Bollinger <input type="number" id="tech-bb-p" value="20" style="width:50px;font-size:11px;padding:2px 4px"> std <input type="number" id="tech-bb-s" value="2" step="0.5" style="width:50px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-macd" checked> MACD <input type="number" id="tech-macd-f" value="12" style="width:40px;font-size:11px;padding:2px 4px">/<input type="number" id="tech-macd-s" value="26" style="width:40px;font-size:11px;padding:2px 4px">/<input type="number" id="tech-macd-m" value="9" style="width:40px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-stoch" checked> Stochastic <input type="number" id="tech-stoch-k" value="14" style="width:40px;font-size:11px;padding:2px 4px">K <input type="number" id="tech-stoch-d" value="3" style="width:40px;font-size:11px;padding:2px 4px">D</label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-wr"> Williams %R <input type="number" id="tech-wr-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-atr"> ATR <input type="number" id="tech-atr-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-adx"> ADX <input type="number" id="tech-adx-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-obv"> OBV</label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-cci"> CCI <input type="number" id="tech-cci-p" value="20" style="width:50px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-mfi"> MFI <input type="number" id="tech-mfi-p" value="14" style="width:50px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-roc"> ROC <input type="number" id="tech-roc-p" value="10" style="width:50px;font-size:11px;padding:2px 4px"></label>
-        <label style="font-size:12px"><input type="checkbox" id="tech-mom"> Momentum <input type="number" id="tech-mom-p" value="10" style="width:50px;font-size:11px;padding:2px 4px"></label>
+      <!-- Indicator toggles -->
+      <div class="tech-toggles">
+        <span class="tech-toggle-group">Trend:</span>
+        <label><input type="checkbox" id="tech-sma" checked> SMA <input type="text" id="tech-sma-p" value="5,10,20,50,100,200" class="tech-inp"></label>
+        <label><input type="checkbox" id="tech-ema" checked> EMA <input type="text" id="tech-ema-p" value="5,10,20,50,100,200" class="tech-inp"></label>
+        <label><input type="checkbox" id="tech-macd" checked> MACD <input type="text" id="tech-macd-f" value="12" class="tech-inp-n">/<input type="text" id="tech-macd-s" value="26" class="tech-inp-n">/<input type="text" id="tech-macd-m" value="9" class="tech-inp-n"></label>
+        <label><input type="checkbox" id="tech-adx"> ADX <input type="text" id="tech-adx-p" value="14" class="tech-inp-n"></label>
+
+        <span class="tech-toggle-group">Momentum:</span>
+        <label><input type="checkbox" id="tech-rsi" checked> RSI <input type="text" id="tech-rsi-p" value="14" class="tech-inp-n"></label>
+        <label><input type="checkbox" id="tech-stoch" checked> Stoch <input type="text" id="tech-stoch-k" value="14" class="tech-inp-n">/<input type="text" id="tech-stoch-d" value="3" class="tech-inp-n"></label>
+        <label><input type="checkbox" id="tech-wr"> Williams%R <input type="text" id="tech-wr-p" value="14" class="tech-inp-n"></label>
+        <label><input type="checkbox" id="tech-cci"> CCI <input type="text" id="tech-cci-p" value="20" class="tech-inp-n"></label>
+        <label><input type="checkbox" id="tech-mfi"> MFI <input type="text" id="tech-mfi-p" value="14" class="tech-inp-n"></label>
+        <label><input type="checkbox" id="tech-roc"> ROC <input type="text" id="tech-roc-p" value="10" class="tech-inp-n"></label>
+        <label><input type="checkbox" id="tech-mom"> Mom <input type="text" id="tech-mom-p" value="10" class="tech-inp-n"></label>
+
+        <span class="tech-toggle-group">Volatility:</span>
+        <label><input type="checkbox" id="tech-bb" checked> Bollinger <input type="text" id="tech-bb-p" value="20" class="tech-inp-n"> <input type="text" id="tech-bb-s" value="2" class="tech-inp-n"></label>
+        <label><input type="checkbox" id="tech-atr"> ATR <input type="text" id="tech-atr-p" value="14" class="tech-inp-n"></label>
+
+        <span class="tech-toggle-group">Volume:</span>
+        <label><input type="checkbox" id="tech-obv"> OBV</label>
       </div>
 
-      <div id="tech-result" class="empty-msg">Select a symbol and calculate</div>
+      <!-- Summary bar -->
+      <div id="tech-summary" class="stock-summary" style="display:none"></div>
+
+      <!-- Signal cards -->
+      <div id="tech-signals" class="tech-signals" style="display:none"></div>
+
+      <!-- Full data -->
+      <div id="tech-result" class="empty-msg">Select a symbol and analyze</div>
     </div>
   </div>
 

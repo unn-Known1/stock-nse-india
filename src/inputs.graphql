@@ -9,4 +9,5 @@ input StringArrayFilter {
 }
 
 input ObjectFilter {
+  dummy: String
 }

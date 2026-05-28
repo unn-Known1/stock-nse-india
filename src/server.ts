@@ -63,6 +63,13 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve dashboard static files from same origin (for tunnel/remote access)
+const dashboardPath = path.resolve(__dirname, '../dashboard')
+if (fs.existsSync(dashboardPath)) {
+  app.use(express.static(dashboardPath))
+  console.log(`Dashboard served from: ${dashboardPath}`)
+}
+
 app.use(mainRouter)
 app.use('/api-docs', swaggerUi.serve as any);
 app.use('/api-docs', swaggerUi.setup(openapiSpecification) as any);
