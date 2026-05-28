@@ -1726,8 +1726,12 @@ async function sendMCPQuery({ regenerate } = {}) {
     maxTokens: mcpConfig.maxTokens,
     systemPrompt: mcpConfig.systemPrompt,
   }
-  if (!regenerate) body.query = query
   if (sessionId) body.sessionId = sessionId
+  if (regenerate && sessionId) {
+    body.regenerate = true
+  } else {
+    body.query = query
+  }
 
   try {
     const res = await apiFetch('/api/mcp/query', {

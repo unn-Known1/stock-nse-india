@@ -1470,7 +1470,7 @@ mainRouter.get('/api/charts/symbol-info', async (req, res) => {
  */
 mainRouter.post('/api/mcp/query', async (req, res) => {
     try {
-        const {
+        let {
             query,
             sessionId: providedSessionId,
             userId,
@@ -1481,9 +1481,19 @@ mainRouter.post('/api/mcp/query', async (req, res) => {
             updatePreferences,
             useMemory,
             maxIterations,
-            enableDebugLogging
+            enableDebugLogging,
+            regenerate
         } = req.body as MCPClientRequest
 
+        if ((!query || typeof query !== 'string') && providedSessionId && regenerate) {
+            const history = getMcpClient().getConversationHistory(providedSessionId)
+            for (let i = history.length - 1; i >= 0; i--) {
+                if (history[i].role === 'user') {
+                    query = history[i].content
+                    break
+                }
+            }
+        }
         if (!query || typeof query !== 'string') {
             return res.status(400).json({
                 error: 'Query is required and must be a string'
@@ -1935,6 +1945,19 @@ mainRouter.put('/api/mcp/session/:sessionId/preferences', async (req, res) => {
  *       404:
  *         description: Session not found
  */
+mainRouter.delete('/api/mcp/session/:sessionId', async (req, res) => {
+    try {
+        const { sessionId } = req.params
+        getMcpClient().clearSession(sessionId)
+        res.json({
+            message: 'Session deleted successfully',
+            sessionId
+        })
+    } catch (error) {
+        sendRouteError(res, error)
+    }
+})
+
 mainRouter.delete('/api/mcp/session/:sessionId/clear', async (req, res) => {
     try {
         const { sessionId } = req.params
@@ -2010,6 +2033,26 @@ mainRouter.post('/api/mcp/cleanup', async (req, res) => {
             message: 'Cleanup completed successfully',
             timestamp: new Date().toISOString()
         })
+    } catch (error) {
+        sendRouteError(res, error)
+    }
+})
+
+/**
+ * @openapi
+ * /api/mcp/sessions:
+ *   get:
+ *     description: List all MCP sessions
+ *     tags:
+ *       - MCP Client
+ *     responses:
+ *       200:
+ *         description: Returns list of sessions
+ */
+mainRouter.get('/api/mcp/sessions', async (req, res) => {
+    try {
+        const sessions = getMcpClient().getAllSessions()
+        res.json({ sessions })
     } catch (error) {
         sendRouteError(res, error)
     }
@@ -2405,6 +2448,38 @@ mainRouter.get('/api/mcp/session/:sessionId/openai-messages', async (req, res) =
             statistics: stats,
             note: 'This is exactly what OpenAI would receive for the next query'
         })
+    } catch (error) {
+        sendRouteError(res, error)
+    }
+})
+
+/**
+ * @openapi
+ * /api/mcp/config:
+ *   post:
+ *     description: Update MCP debug configuration
+ *     tags:
+ *       - MCP Client
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               debugLogging:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Config updated successfully
+ */
+mainRouter.post('/api/mcp/config', async (req, res) => {
+    try {
+        const { debugLogging } = req.body
+        if (typeof debugLogging === 'boolean') {
+            process.env.MCP_DEBUG_LOGGING = String(debugLogging)
+        }
+        res.json({ message: 'Config updated', restartRequired: false })
     } catch (error) {
         sendRouteError(res, error)
     }

@@ -12,10 +12,11 @@ export function errorMessage(error: unknown): string {
 
 export function httpStatusFromError(error: unknown): number {
     const message = errorMessage(error)
-    if (message.includes('403')) return 403
-    if (message.includes('404')) return 404
-    if (message.includes('401')) return 401
-    if (message.includes('400')) return 400
+    if (message.startsWith('MCP Client Error')) return 502
+    if (/\b(403)\b/.test(message)) return 403
+    if (/\b(404)\b/.test(message)) return 404
+    if (/\b(401)\b/.test(message)) return 401
+    if (/\b(400)\b/.test(message)) return 400
     return 502
 }
 

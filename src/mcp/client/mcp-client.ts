@@ -15,6 +15,7 @@ export interface MCPClientRequest {
   useMemory?: boolean
   maxIterations?: number
   enableDebugLogging?: boolean
+  regenerate?: boolean
 }
 
 export interface MCPClientResponse {
@@ -733,6 +734,23 @@ export class MCPClient {
   // ============================================================================
   // Memory Management Methods (only available if memory is enabled)
   // ============================================================================
+
+  /**
+   * Get all sessions with basic stats
+   */
+  getAllSessions(): Array<{
+    sessionId: string
+    userId?: string
+    startTime: string
+    lastActivity: string
+    messageCount: number
+    recentQueriesCount: number
+  }> {
+    if (!this.config.enableMemory) {
+      throw new Error('Memory is not enabled for this MCP client')
+    }
+    return this.getMemoryManager().getAllSessions()
+  }
 
   /**
    * Get session information

@@ -523,6 +523,39 @@ export class MemoryManager {
   }
 
   /**
+   * Get all sessions with basic stats
+   */
+  getAllSessions(): Array<{
+    sessionId: string
+    userId?: string
+    startTime: string
+    lastActivity: string
+    messageCount: number
+    recentQueriesCount: number
+  }> {
+    const sessions: Array<{
+      sessionId: string
+      userId?: string
+      startTime: string
+      lastActivity: string
+      messageCount: number
+      recentQueriesCount: number
+    }> = []
+    for (const session of this.sessions.values()) {
+      sessions.push({
+        sessionId: session.sessionId,
+        userId: session.userId,
+        startTime: session.startTime,
+        lastActivity: session.lastActivity,
+        messageCount: session.conversationHistory.length,
+        recentQueriesCount: session.contextData.recentQueries.length
+      })
+    }
+    sessions.sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime())
+    return sessions
+  }
+
+  /**
    * Clear session data
    */
   clearSession(sessionId: string): void {
