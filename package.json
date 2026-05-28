@@ -5,7 +5,7 @@
   "main": "build/index.js",
   "browser": false,
   "repository": "https://github.com/unn-Known1/stock-nse-india.git",
-  "author": "Asraf Ali <asraf.cse@gmail.com>",
+  "author": "unn-known1",
   "license": "MIT",
   "bin": {
     "nseindia": "build/cli/index.js"
