@@ -2,10 +2,39 @@
 // NSE India Data Explorer — App Logic
 // ═══════════════════════════════════════════════════════════
 
-// ── Configuration ──────────────────────────────────────────
-const API_BASE = window.location.origin.includes('localhost') ||
-                 window.location.origin.includes('127.0.0.1')
-  ? '' : 'http://localhost:3000'
+// ── Configuration (port auto-detection) ───────────────────
+// Probes common ports at startup to find the API server.
+// Dashboard works with: same origin, localhost:3000-3003, or manual API_BASE override.
+const PROBE_PORTS = ['', '3000', '3001', '3002', '3003']
+let API_BASE = ''
+
+async function findApiBase() {
+  // If served from same origin as API, relative URLs work
+  const probeUrls = PROBE_PORTS.map(p => {
+    if (!p) return { port: p, url: window.location.origin }
+    return { port: p, url: `http://localhost:${p}` }
+  })
+
+  for (const { port, url } of probeUrls) {
+    try {
+      const res = await fetch(`${url}/api/marketStatus`, {
+        signal: AbortSignal.timeout(3000)
+      })
+      if (res.ok) {
+        API_BASE = port ? url : ''
+        console.log(`API server found at ${API_BASE || 'same origin'}`)
+        return true
+      }
+    } catch {
+      // port not responding, try next
+    }
+  }
+
+  // Fallback: assume same origin
+  API_BASE = ''
+  console.warn('API server not found on probed ports, using same origin')
+  return false
+}
 
 // ── Cache with TTL ─────────────────────────────────────────
 const cache = new Map()
@@ -533,16 +562,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const statusEl = document.getElementById('server-status')
 
+  // Auto-detect API server port
+  statusEl.textContent = 'Probing ports...'
+  await findApiBase()
+
   try {
     const status = await apiFetch('/api/marketStatus')
-    statusEl.textContent = '✓ Connected'
+    statusEl.textContent = `✓ Connected ${API_BASE || '(same origin)'}`
     statusEl.className = 'header-status'
   } catch (err) {
+    const tip = API_BASE ? `at ${API_BASE}` : '(same origin)'
     statusEl.textContent = '✗ Cannot reach server'
     statusEl.className = 'header-status error'
     showError('main-content', new Error(
-      `Cannot reach API server at ${API_BASE || 'http://localhost:3000'}. ` +
-      `Make sure the server is running (npm start).`
+      `Cannot reach API server ${tip}. ` +
+      `Make sure the server is running (npm start) and CORS_ORIGINS is set.`
     ))
     return
   }
