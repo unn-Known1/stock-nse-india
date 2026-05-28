@@ -1,27 +1,42 @@
 
-[![NPM](https://nodei.co/npm/stock-nse-india.png)](https://nodei.co/npm/stock-nse-india/)
+<p align="center">
+  <img src="https://nodei.co/npm/stock-nse-india.png" alt="npm">
+</p>
 
 # National Stock Exchange - India (Unofficial)
 
-![](https://github.com/unn-Known1/stock-nse-india/workflows/CI/badge.svg) ![npm](https://img.shields.io/npm/dt/stock-nse-india) ![NPM](https://img.shields.io/npm/l/stock-nse-india) ![GitHub Release Date - Published_At](https://img.shields.io/npm/v/stock-nse-india) ![GitHub top language](https://img.shields.io/github/languages/top/unn-Known1/stock-nse-india)
+> **Fork** of [hi-imcodeman/stock-nse-india](https://github.com/hi-imcodeman/stock-nse-india) —
+> all credit to the original author for the excellent NSE API package.
 
-A comprehensive package and API server for accessing equity/index details and historical data from the National Stock Exchange of India. Provides an NPM package, a full-featured REST/GraphQL API server, a CLI tool, and a browser dashboard.
+![npm](https://img.shields.io/npm/dt/stock-nse-india)
+![NPM](https://img.shields.io/npm/l/stock-nse-india)
+![npm](https://img.shields.io/npm/v/stock-nse-india)
+![GitHub top language](https://img.shields.io/github/languages/top/unn-Known1/stock-nse-india)
 
-**📚 [Documentation](https://hi-imcodeman.github.io/stock-nse-india)** | **🚀 [Examples](https://github.com/unn-Known1/stock-nse-india/tree/master/examples)**
+A comprehensive package and API server for accessing equity, index, commodity, and options data from the National Stock Exchange of India. Ships as an NPM package, a REST/GraphQL API server, a CLI tool, an MCP server for AI assistants, and a browser-based dashboard.
 
-## ✨ Features
+---
 
-- **📦 NPM Package** — Direct integration into Node.js projects
-- **🔌 REST + GraphQL API** — Swagger-documented endpoints + Apollo Server
-- **🤖 MCP Server** — [Model Context Protocol](MCP_README.md) for AI assistants
-- **💻 CLI** — Command-line data access
-- **🐳 Docker** — Containerized deployment
-- **📊 Dashboard** — Browser-based UI (auto-detects API port)
-- **📈 Data**: Equity, Index, Commodity, Options, Technical indicators
+## ✨ What's in this Fork
+
+| Improvement | Detail |
+|------------|--------|
+| 🖥️ **Browser Dashboard** | 6-tab UI (Market, Stock, Indices, Options, Charts, Technical) — auto-detects API port, no build step |
+| 🐞 **44 Gap-Analysis Fixes** | 16 critical, 13 high, 15 medium issues resolved across 22 files |
+| ✅ **All 193 Tests Passing** | Full test suite green across all 9 spec files |
+| 📋 **API_ENDPOINTS.md** | Complete 66-endpoint catalog with dropdown UX hints |
+| 📈 **Technical Indicators** | 14 indicators (SMA, EMA, RSI, Bollinger, MACD, Stochastic, ATR, ADX, OBV, CCI, MFI, ROC, Momentum, Williams %R) |
+| 🚦 **Port Auto-Detection** | Dashboard probes `3000`–`3003` at startup — run the API on any port |
+| 🔄 **Per-Symbol Caching** | Charting symbol lookup now cached per-symbol instead of using wildcards |
+| 🧪 **Robust Test Mocks** | Session, charting, and equity tests no longer make real HTTP calls |
+
+---
 
 ## 🚀 Quick Start
 
 **Prerequisites:** Node.js 18+
+
+### As an NPM Package
 
 ```bash
 npm install stock-nse-india
@@ -29,6 +44,7 @@ npm install stock-nse-india
 
 ```javascript
 import { NseIndia } from "stock-nse-india";
+
 const nseIndia = new NseIndia();
 const symbols = await nseIndia.getAllStockSymbols();
 const details = await nseIndia.getEquityDetails('IRCTC');
@@ -44,20 +60,130 @@ cp .env.example .env
 npm start
 ```
 
-- **Main App:** http://localhost:3000
-- **GraphQL:** http://localhost:3000/graphql
-- **API Docs:** http://localhost:3000/api-docs
-
-## 📊 Dashboard
-
-A no-build browser dashboard with 6 tabs (Market, Stock, Indices, Options, Charts, Technical), autocomplete for 2000+ symbols, pagination, CSV/JSON export, and auto-detection of the API server port.
+### Open the Dashboard
 
 ```bash
-npm start                    # Terminal 1: start API server
-npx serve dashboard          # Terminal 2: open dashboard
+# Terminal 1: API server
+npm start
+
+# Terminal 2: serve the dashboard
+npx serve dashboard
 ```
 
-See [dashboard/README.md](dashboard/README.md) for full details.
+The dashboard auto-detects the API port. Open whatever URL `serve` gives you.
+
+---
+
+## 📊 Browser Dashboard
+
+A no-build, zero-dependency dashboard that talks to the NSE API server.
+
+```
+dashboard/
+├── index.html       ← 6-tab layout with export buttons
+├── style.css        ← Responsive, table, loading/error states
+├── app.js           ← All logic (API, cache, autocomplete, tables, export)
+└── README.md        ← Full dashboard docs
+```
+
+| Tab | What you get |
+|-----|-------------|
+| **Market Overview** | Market status, turnover, all indices, trading/clearing holidays, glossary — loaded in parallel |
+| **Stock Lookup** | Equity details, trade info, intraday data — pick from 2000+ symbols via keyboard-navigable autocomplete |
+| **Indices** | Constituent stocks, gainers/losers, most active equities by index |
+| **Options** | Option chain — equity or index, with contract info |
+| **Charts** | Intraday or daily OHLC from the charting API |
+| **Technical** | 14 indicators with adjustable parameters + checkbox toggles |
+
+Every data section has:
+- **CSV/JSON export** buttons (CSV includes BOM for Excel)
+- **Pagination** (100 rows/page) + search filter
+- **Error isolation** — one section failing doesn't block others; each gets a retry button
+- **TTL-based caching** — 30s intraday, 60s equity, 5m historical, 1h symbols
+
+---
+
+## ✨ Features (Original + Fork)
+
+### 📦 NPM Package
+
+| Method | Description |
+|--------|-------------|
+| `getAllStockSymbols()` | All NSE stock symbols |
+| `getEquityDetails(symbol)` | Equity information |
+| `getEquityHistoricalData(symbol, range)` | Historical price data |
+| `getEquityIntradayData(symbol)` | Intraday trading data |
+| `getEquityOptionChain(symbol)` | Options chain |
+| `getEquityCorporateInfo(symbol)` | Corporate information |
+| `getEquityTradeInfo(symbol)` | Trading statistics |
+| `getEquityChartHistoricalData(symbol, range?, token?, type?, interval?)` | Charting OHLC |
+| `getEquitySymbolInfo(symbol, segment?)` | Charting symbol/token resolution |
+| `getAllStockSymbols()` | All symbols for autocomplete |
+| `getEquityStockIndices()` | All market indices |
+| `getIndexIntradayData(index)` | Index intraday |
+| `getIndexOptionChain(index)` | Index options |
+| `getIndexOptionChainContractInfo(symbol)` | Expiry dates & strikes |
+| `getCommodityOptionChain(symbol)` | Commodity options |
+| `getGainersAndLosersByIndex(index)` | Top gainers & losers |
+| `getMostActiveEquities()` | Most active stocks |
+| `getData()` / `getDataByEndpoint()` | Generic NSE data retrieval |
+
+### 🌐 REST API
+
+All endpoints are auto-documented via Swagger at `http://localhost:3000/api-docs`.
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/marketStatus` | Market status |
+| `GET /api/glossary` | NSE glossary |
+| `GET /api/equity/:symbol` | Equity details (with fallback chain) |
+| `GET /api/equity/tradeInfo/:symbol` | Trade info / order book |
+| `GET /api/equity/intraday/:symbol` | Intraday OHLC |
+| `GET /api/equity/:symbol/historical` | Historical data |
+| `GET /api/indices` | All market indices |
+| `GET /api/charts/equity-historical-data` | Charting OHLC historical |
+| `GET /api/charts/symbol-info` | Charting symbol/token |
+| `GET /api/mcp/query` | Natural-language MCP query |
+
+### 🔌 GraphQL API
+
+Available at `http://localhost:3000/graphql` with Apollo Studio.
+
+```graphql
+query GetEquity {
+  equities(symbolFilter: { in: ["IRCTC", "TCS"] }) {
+    symbol
+    details { info { companyName industry } }
+  }
+}
+```
+
+### 🤖 MCP Server (AI Assistants)
+
+Model Context Protocol server for AI tools like Cursor, Claude, etc. See [MCP_README.md](MCP_README.md) for configuration.
+
+```bash
+npm run start:mcp     # Start stdio MCP server
+npm run test:mcp      # Test it
+```
+
+### 💻 CLI
+
+```bash
+nseindia              # Market status
+nseindia equity IRCTC # Equity details
+nseindia historical IRCTC
+nseindia index        # All indices
+nseindia index "NIFTY AUTO"
+```
+
+### 🐳 Docker
+
+```bash
+docker run --rm -d -p 3001:3001 imcodeman/nseindia
+```
+
+---
 
 ## ⚙️ Configuration
 
@@ -68,10 +194,23 @@ cp .env.example .env
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `3000` | Server port |
-| `HOST_URL` | `http://localhost:3000` | Public host URL |
+| `HOST_URL` | `http://localhost:3000` | Public URL |
 | `NODE_ENV` | `development` | Environment |
 | `CORS_ORIGINS` | `*` | Allowed origins (comma-separated) |
 | `HTTPS_ENABLED` | `false` | Enable HTTPS (needs mkcert certs) |
+| `SSL_KEY_PATH` | `./certs/localhost-key.pem` | TLS key |
+| `SSL_CERT_PATH` | `./certs/localhost.pem` | TLS cert |
+
+### Local HTTPS (Safari + Apollo Studio)
+
+```bash
+brew install mkcert && mkcert -install
+mkdir -p certs && mkcert -key-file certs/localhost-key.pem -cert-file certs/localhost.pem localhost 127.0.0.1 ::1
+# Set HTTPS_ENABLED=true, HOST_URL=https://localhost:3000 in .env
+npm start
+```
+
+---
 
 ## 🏃‍♂️ Development
 
@@ -79,8 +218,8 @@ cp .env.example .env
 git clone https://github.com/unn-Known1/stock-nse-india.git
 cd stock-nse-india
 npm install
-npm run start:dev    # dev mode with auto-reload
-npm run build        # build TypeScript
+npm run start:dev   # Dev mode with auto-reload
+npm run build       # TypeScript build
 ```
 
 ### Scripts
@@ -88,43 +227,56 @@ npm run build        # build TypeScript
 | Script | Description |
 |--------|-------------|
 | `npm start` | Production server |
-| `npm run start:dev` | Dev mode with auto-reload |
-| `npm run build` | Build TypeScript |
+| `npm run start:dev` | Dev mode (auto-reload) |
+| `npm run build` | Build TypeScript → JS |
 | `npm test` | Unit/mock tests with coverage |
 | `npm run test:e2e` | Live NSE e2e tests |
 | `npm run start:mcp` | Start stdio MCP server |
+| `npm run test:mcp` | Test MCP server |
 | `npm run lint` | ESLint |
-| `npm run docs` | TypeDoc documentation |
+| `npm run docs` | TypeDoc |
+
+---
 
 ## 🧪 Testing
 
 ```bash
-npm test                    # unit/mock tests
-npm test -- --coverage      # with coverage
-npm run test:e2e            # live NSE e2e tests
+npm test                    # Unit/mock tests (193 tests, 9 suites)
+npm test -- --coverage      # With coverage report
+npm run test:e2e            # Live NSE e2e (requires network)
+npm test -- foo.spec.ts     # Single test file
 ```
 
-## 🤝 Contributing
+---
 
-Fork, create a feature branch, make changes with tests, ensure all tests pass, submit a PR.
+## 📚 Additional Docs
+
+- [Dashboard README](dashboard/README.md) — Full dashboard usage
+- [API Endpoints Catalog](API_ENDPOINTS.md) — All 66 endpoints organized by category
+- [MCP Server Docs](MCP_README.md) — MCP configuration & usage
+- [Implementation Plan](DASHBOARD_PLAN.md) — Dashboard architecture & design decisions
+
+---
+
+## 👥 Credits
+
+This is a fork of [hi-imcodeman/stock-nse-india](https://github.com/hi-imcodeman/stock-nse-india). All original work — the NSE API integration, NPM package, GraphQL/REST/MCP/CLI servers, and Docker support — was built by the original author. This fork adds the browser dashboard, fixes 44 gap-analysis findings, and provides API endpoint documentation.
+
+Original contributors:
+
+<a href="https://github.com/hi-imcodeman/stock-nse-india/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=hi-imcodeman/stock-nse-india" />
+</a>
+
+---
 
 ## 📄 License
 
 MIT — see [LICENSE](LICENSE).
 
-## 👥 Contributors
-
-<a href="https://github.com/unn-Known1/stock-nse-india/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=unn-Known1/stock-nse-india" />
-</a>
-
 ## 🔗 Links
 
-- **🌐 [Website](https://hi-imcodeman.github.io/stock-nse-india)**
 - **📦 [NPM](https://www.npmjs.com/package/stock-nse-india)**
 - **🐳 [Docker Hub](https://hub.docker.com/r/imcodeman/nseindia)**
+- **📖 [Original Repo](https://github.com/hi-imcodeman/stock-nse-india)**
 - **🐛 [Issues](https://github.com/unn-Known1/stock-nse-india/issues)**
-
----
-
-**⭐ Star this repository if you find it helpful!**
