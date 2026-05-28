@@ -888,14 +888,17 @@ async function loadIndexNames() {
 }
 
 function populateIndexSelect() {
-  const sel = document.getElementById('index-select')
-  if (!sel || !indexNamesCache.length) return
-  sel.innerHTML = '<option value="">Select index...</option>' +
-    indexNamesCache.map(i => {
-      const key = Array.isArray(i) ? i[0] : i.key || i
-      const label = Array.isArray(i) ? i[1] || i[0] : i.index || i.key || i
-      return `<option value="${key}">${label}</option>`
-    }).join('')
+  const sels = ['index-select', 'opt-index-select']
+  sels.forEach(id => {
+    const sel = document.getElementById(id)
+    if (!sel || !indexNamesCache.length) return
+    sel.innerHTML = '<option value="">Select index...</option>' +
+      indexNamesCache.map(i => {
+        const key = Array.isArray(i) ? i[0] : i.key || i
+        const label = Array.isArray(i) ? i[1] || i[0] : i.index || i.key || i
+        return `<option value="${key}">${label}</option>`
+      }).join('')
+  })
 }
 
 function initIndicesTab() {
