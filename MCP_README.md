@@ -1,10 +1,40 @@
 # NSE India MCP Server
 
-This is a Model Context Protocol (MCP) server that exposes all the functions from the NSE India stock market API library.
+This is a Model Context Protocol (MCP) server that exposes all the functions from the NSE India stock market API library. It powers both the **AI Assistant tab** in the browser dashboard and external AI tools such as Cursor and Claude Desktop.
+
+---
+
+## Browser Dashboard — AI Assistant Tab
+
+The fastest way to interact with the MCP server is through the built-in **AI Assistant** tab in the browser dashboard. No configuration file or IDE needed.
+
+**Setup:**
+
+1. Add your OpenAI API key to `.env`:
+   ```
+   OPENAI_API_KEY=sk-...
+   ```
+2. Start the server: `./launch.sh` (or `npm start`)
+3. Open `http://localhost:3000` and click **AI Assistant**
+
+**What it does:**
+
+- Ask questions in plain English — the AI calls MCP tools to fetch live NSE data and answers in markdown
+- Supports session history, context stats polling, configurable model/temperature/max-tokens, and response export
+- "Ask AI" shortcut buttons appear in the **Stock** and **Technical** tabs after data loads
+
+See [dashboard/README.md](dashboard/README.md) for the full feature list.
+
+---
+
 
 ## What is MCP?
 
 Model Context Protocol (MCP) is a standard for AI assistants to communicate with external data sources and tools. It allows AI models to access real-time stock market data from the National Stock Exchange of India.
+
+The MCP backend in this project serves two consumers:
+- **Browser dashboard** — the AI Assistant tab sends queries to `/api/mcp/query` over HTTP
+- **External AI tools** — Cursor, Claude Desktop, and other MCP-compatible clients connect via the stdio server
 
 ## Architecture
 
@@ -509,4 +539,4 @@ MIT License - see LICENSE file for details
 
 ## Support
 
-For issues and questions, please visit the [GitHub repository](https://github.com/hi-imcodeman/stock-nse-india).
+For issues and questions, please visit the [GitHub repository](https://github.com/unn-Known1/stock-nse-india).

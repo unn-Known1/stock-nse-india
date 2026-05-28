@@ -21,10 +21,10 @@ A comprehensive package and API server for accessing equity, index, commodity, a
 
 | Improvement | Detail |
 |------------|--------|
-| 🖥️ **Browser Dashboard** | 6-tab UI (Market, Stock, Indices, Options, Charts, Technical) — auto-detects API port, no build step |
+| 🖥️ **Browser Dashboard** | 7-tab UI (Market, Stock, Indices, Options, Charts, Technical, **AI Assistant**) — auto-detects API port, no build step |
+| 🤖 **AI Assistant Tab** | Ask natural-language questions about NSE data; markdown responses, session management, token usage display |
 | 🐞 **44 Gap-Analysis Fixes** | 16 critical, 13 high, 15 medium issues resolved across 22 files |
 | ✅ **All 193 Tests Passing** | Full test suite green across all 9 spec files |
-| 📋 **API_ENDPOINTS.md** | Complete 66-endpoint catalog with dropdown UX hints |
 | 📈 **Technical Indicators** | 14 indicators (SMA, EMA, RSI, Bollinger, MACD, Stochastic, ATR, ADX, OBV, CCI, MFI, ROC, Momentum, Williams %R) |
 | 🚦 **Port Auto-Detection** | Dashboard probes `3000`–`3003` at startup — run the API on any port |
 | 🔄 **Per-Symbol Caching** | Charting symbol lookup now cached per-symbol instead of using wildcards |
@@ -78,9 +78,9 @@ A no-build, zero-dependency dashboard that talks to the NSE API server.
 
 ```
 dashboard/
-├── index.html       ← 6-tab layout with export buttons
+├── index.html       ← 7-tab layout with export buttons
 ├── style.css        ← Responsive, table, loading/error states
-├── app.js           ← All logic (API, cache, autocomplete, tables, export)
+├── app.js           ← All logic (API, cache, autocomplete, tables, export, AI)
 └── README.md        ← Full dashboard docs
 ```
 
@@ -92,6 +92,7 @@ dashboard/
 | **Options** | Option chain — equity or index, with contract info |
 | **Charts** | Intraday or daily OHLC from the charting API |
 | **Technical** | 14 indicators with adjustable parameters + checkbox toggles |
+| **AI Assistant** | Natural-language queries powered by OpenAI; markdown responses, session history, context stats, configurable model/temperature |
 
 Every data section has:
 - **CSV/JSON export** buttons (CSV includes BOM for Excel)
@@ -195,6 +196,8 @@ cp .env.example .env
 | `HOST_URL` | `http://localhost:3000` | Public URL |
 | `NODE_ENV` | `development` | Environment |
 | `CORS_ORIGINS` | `*` | Allowed origins (comma-separated) |
+| `OPENAI_API_KEY` | — | **Required for AI Assistant tab** — OpenAI API key |
+| `MCP_DEBUG_LOGGING` | `false` | Verbose MCP request/response logging (restart to apply) |
 | `HTTPS_ENABLED` | `false` | Enable HTTPS (needs mkcert certs) |
 | `SSL_KEY_PATH` | `./certs/localhost-key.pem` | TLS key |
 | `SSL_CERT_PATH` | `./certs/localhost.pem` | TLS cert |
@@ -251,14 +254,13 @@ npm test -- foo.spec.ts     # Single test file
 ## 📚 Additional Docs
 
 - [Dashboard README](dashboard/README.md) — Full dashboard usage
-- [MCP Server Docs](MCP_README.md) — MCP configuration & usage
-- [MCP Dashboard Integration Plan](MCP_DASHBOARD_PLAN.md) — Plan for adding an MCP/AI tab to the browser dashboard
+- [MCP Server Docs](MCP_README.md) — MCP server configuration, tools reference, context summarization
 
 ---
 
 ## 👥 Credits
 
-This is a fork of [hi-imcodeman/stock-nse-india](https://github.com/hi-imcodeman/stock-nse-india). All original work — the NSE API integration, NPM package, GraphQL/REST/MCP/CLI servers, and Docker support — was built by the original author. This fork adds the browser dashboard, fixes 44 gap-analysis findings, and provides API endpoint documentation.
+This is a fork of [hi-imcodeman/stock-nse-india](https://github.com/hi-imcodeman/stock-nse-india). All original work — the NSE API integration, NPM package, GraphQL/REST/MCP/CLI servers, and Docker support — was built by the original author. This fork adds the browser dashboard (including the AI Assistant tab), fixes 44 gap-analysis findings, and provides API endpoint documentation.
 
 Original contributors:
 
