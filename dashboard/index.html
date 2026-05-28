@@ -312,27 +312,40 @@
 
       <!-- Indicator toggles -->
       <div class="tech-toggles">
-        <span class="tech-toggle-group">Trend:</span>
-        <label><input type="checkbox" id="tech-sma" checked> SMA <input type="text" id="tech-sma-p" value="5,10,20,50,100,200" class="tech-inp"></label>
-        <label><input type="checkbox" id="tech-ema" checked> EMA <input type="text" id="tech-ema-p" value="5,10,20,50,100,200" class="tech-inp"></label>
-        <label><input type="checkbox" id="tech-macd" checked> MACD <input type="text" id="tech-macd-f" value="12" class="tech-inp-n">/<input type="text" id="tech-macd-s" value="26" class="tech-inp-n">/<input type="text" id="tech-macd-m" value="9" class="tech-inp-n"></label>
-        <label><input type="checkbox" id="tech-adx"> ADX <input type="text" id="tech-adx-p" value="14" class="tech-inp-n"></label>
-
-        <span class="tech-toggle-group">Momentum:</span>
-        <label><input type="checkbox" id="tech-rsi" checked> RSI <input type="text" id="tech-rsi-p" value="14" class="tech-inp-n"></label>
-        <label><input type="checkbox" id="tech-stoch" checked> Stoch <input type="text" id="tech-stoch-k" value="14" class="tech-inp-n">/<input type="text" id="tech-stoch-d" value="3" class="tech-inp-n"></label>
-        <label><input type="checkbox" id="tech-wr"> Williams%R <input type="text" id="tech-wr-p" value="14" class="tech-inp-n"></label>
-        <label><input type="checkbox" id="tech-cci"> CCI <input type="text" id="tech-cci-p" value="20" class="tech-inp-n"></label>
-        <label><input type="checkbox" id="tech-mfi"> MFI <input type="text" id="tech-mfi-p" value="14" class="tech-inp-n"></label>
-        <label><input type="checkbox" id="tech-roc"> ROC <input type="text" id="tech-roc-p" value="10" class="tech-inp-n"></label>
-        <label><input type="checkbox" id="tech-mom"> Mom <input type="text" id="tech-mom-p" value="10" class="tech-inp-n"></label>
-
-        <span class="tech-toggle-group">Volatility:</span>
-        <label><input type="checkbox" id="tech-bb" checked> Bollinger <input type="text" id="tech-bb-p" value="20" class="tech-inp-n"> <input type="text" id="tech-bb-s" value="2" class="tech-inp-n"></label>
-        <label><input type="checkbox" id="tech-atr"> ATR <input type="text" id="tech-atr-p" value="14" class="tech-inp-n"></label>
-
-        <span class="tech-toggle-group">Volume:</span>
-        <label><input type="checkbox" id="tech-obv"> OBV</label>
+        <div class="tech-group-block">
+          <div class="tech-group-title">Trend</div>
+          <div class="tech-chip-list">
+            <label class="tech-chip" data-for="tech-sma"><input type="checkbox" id="tech-sma" checked><span class="tech-chip-label">SMA</span><input type="text" id="tech-sma-p" value="5,10,20,50,100,200" class="tech-chip-inp"></label>
+            <label class="tech-chip" data-for="tech-ema"><input type="checkbox" id="tech-ema" checked><span class="tech-chip-label">EMA</span><input type="text" id="tech-ema-p" value="5,10,20,50,100,200" class="tech-chip-inp"></label>
+            <label class="tech-chip" data-for="tech-macd"><input type="checkbox" id="tech-macd" checked><span class="tech-chip-label">MACD</span><span class="tech-chip-params"><input type="text" id="tech-macd-f" value="12" class="tech-param">/<input type="text" id="tech-macd-s" value="26" class="tech-param">/<input type="text" id="tech-macd-m" value="9" class="tech-param"></span></label>
+            <label class="tech-chip" data-for="tech-adx"><input type="checkbox" id="tech-adx"><span class="tech-chip-label">ADX</span><span class="tech-chip-params"><input type="text" id="tech-adx-p" value="14" class="tech-param"></span></label>
+          </div>
+        </div>
+        <div class="tech-group-block">
+          <div class="tech-group-title">Momentum</div>
+          <div class="tech-chip-list">
+            <label class="tech-chip" data-for="tech-rsi"><input type="checkbox" id="tech-rsi" checked><span class="tech-chip-label">RSI</span><span class="tech-chip-params"><input type="text" id="tech-rsi-p" value="14" class="tech-param"></span></label>
+            <label class="tech-chip" data-for="tech-stoch"><input type="checkbox" id="tech-stoch" checked><span class="tech-chip-label">Stoch</span><span class="tech-chip-params"><input type="text" id="tech-stoch-k" value="14" class="tech-param">/<input type="text" id="tech-stoch-d" value="3" class="tech-param"></span></label>
+            <label class="tech-chip" data-for="tech-wr"><input type="checkbox" id="tech-wr"><span class="tech-chip-label">W%R</span><span class="tech-chip-params"><input type="text" id="tech-wr-p" value="14" class="tech-param"></span></label>
+            <label class="tech-chip" data-for="tech-cci"><input type="checkbox" id="tech-cci"><span class="tech-chip-label">CCI</span><span class="tech-chip-params"><input type="text" id="tech-cci-p" value="20" class="tech-param"></span></label>
+            <label class="tech-chip" data-for="tech-mfi"><input type="checkbox" id="tech-mfi"><span class="tech-chip-label">MFI</span><span class="tech-chip-params"><input type="text" id="tech-mfi-p" value="14" class="tech-param"></span></label>
+            <label class="tech-chip" data-for="tech-roc"><input type="checkbox" id="tech-roc"><span class="tech-chip-label">ROC</span><span class="tech-chip-params"><input type="text" id="tech-roc-p" value="10" class="tech-param"></span></label>
+            <label class="tech-chip" data-for="tech-mom"><input type="checkbox" id="tech-mom"><span class="tech-chip-label">Mom</span><span class="tech-chip-params"><input type="text" id="tech-mom-p" value="10" class="tech-param"></span></label>
+          </div>
+        </div>
+        <div class="tech-group-block">
+          <div class="tech-group-title">Volatility</div>
+          <div class="tech-chip-list">
+            <label class="tech-chip" data-for="tech-bb"><input type="checkbox" id="tech-bb" checked><span class="tech-chip-label">Bollinger</span><span class="tech-chip-params"><input type="text" id="tech-bb-p" value="20" class="tech-param"> std <input type="text" id="tech-bb-s" value="2" class="tech-param"></span></label>
+            <label class="tech-chip" data-for="tech-atr"><input type="checkbox" id="tech-atr"><span class="tech-chip-label">ATR</span><span class="tech-chip-params"><input type="text" id="tech-atr-p" value="14" class="tech-param"></span></label>
+          </div>
+        </div>
+        <div class="tech-group-block">
+          <div class="tech-group-title">Volume</div>
+          <div class="tech-chip-list">
+            <label class="tech-chip" data-for="tech-obv"><input type="checkbox" id="tech-obv"><span class="tech-chip-label">OBV</span></label>
+          </div>
+        </div>
       </div>
 
       <!-- Summary bar -->

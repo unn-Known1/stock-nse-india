@@ -564,33 +564,69 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* ── Technical Toggles ────────────────────────────────────── */
 .tech-toggles {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
+  flex-direction: column;
+  gap: 10px;
   margin: 12px 0;
-  padding: 12px;
+  padding: 14px;
   background: #f8f9fa;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   font-size: 12px;
-  align-items: center;
 }
-.tech-toggle-group {
-  font-weight: 600;
-  color: var(--text-secondary);
+.tech-group-block { }
+.tech-group-block .tech-group-title {
   font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
-  margin-right: 4px;
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
 }
-.tech-toggles label {
+.tech-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tech-chip {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
   cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+  user-select: none;
   white-space: nowrap;
 }
-.tech-inp { width: 120px; font-size: 11px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 3px; }
-.tech-inp-n { width: 40px; font-size: 11px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 3px; }
+.tech-chip:hover { border-color: var(--primary); background: #f0f4ff; }
+.tech-chip:has(input:checked) {
+  background: #e8f0fe;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.tech-chip input[type="checkbox"] { display: none; }
+.tech-chip-label { font-weight: 500; }
+.tech-chip:has(input:checked) .tech-chip-label { font-weight: 600; }
+
+/* Hide params when unchecked */
+.tech-chip .tech-chip-inp,
+.tech-chip .tech-chip-params { display: none; }
+.tech-chip input[type="checkbox"]:checked ~ .tech-chip-inp,
+.tech-chip input[type="checkbox"]:checked ~ .tech-chip-params { display: inline-flex; gap: 2px; }
+
+.tech-param {
+  width: 36px;
+  font-size: 11px;
+  padding: 1px 3px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  text-align: center;
+  background: #fff;
+}
+.tech-chip-inp { width: 100px; font-size: 11px; padding: 1px 4px; border: 1px solid var(--border); border-radius: 3px; }
 
 /* ── Technical Signals ───────────────────────────────────── */
 .tech-signals { margin-bottom: 12px; }
