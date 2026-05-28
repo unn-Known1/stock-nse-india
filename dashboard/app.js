@@ -22,7 +22,7 @@ async function findApiBase() {
       })
       if (res.ok) {
         API_BASE = port ? url : ''
-        console.log(`API server found at ${API_BASE || 'same origin'}`)
+        // API server found
         return true
       }
     } catch {
@@ -32,7 +32,7 @@ async function findApiBase() {
 
   // Fallback: assume same origin
   API_BASE = ''
-  console.warn('API server not found on probed ports, using same origin')
+  // using same origin as fallback
   return false
 }
 

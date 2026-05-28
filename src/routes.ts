@@ -1462,7 +1462,7 @@ mainRouter.post('/api/mcp/query', async (req, res) => {
         }
         if (!validateApiKey(apiKey)) {
             return res.status(500).json({
-                error: 'API key is invalid. For OpenAI, it must start with "sk-". For compatible providers, also set OPENAI_BASE_URL.'
+                error: 'API key is invalid. For compatible providers, also set OPENAI_BASE_URL.'
             })
         }
 
@@ -1584,7 +1584,7 @@ mainRouter.get('/api/mcp/test', async (_req, res) => {
         if (!validateApiKey(testApiKey)) {
             return res.status(500).json({
                 status: 'error',
-                message: 'API key is invalid. For OpenAI use an sk- key; for compatible providers also set OPENAI_BASE_URL.',
+                message: 'API key is invalid. For compatible providers also set OPENAI_BASE_URL.',
                 openaiConfigured: false,
                 timestamp: new Date().toISOString()
             })

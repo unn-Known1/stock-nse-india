@@ -18,6 +18,7 @@ import { mainRouter } from './routes'
 import cors from 'cors';
 
 const app = express()
+app.disable('x-powered-by')
 const port = process.env.PORT || 3000
 const isHttpsEnabled = process.env.HTTPS_ENABLED === 'true'
 const protocol = isHttpsEnabled ? 'https' : 'http'
@@ -56,7 +57,8 @@ app.use(cors({
   ],
   methods: corsMethods,
   allowedHeaders: corsHeaders,
-  credentials: process.env.CORS_CREDENTIALS !== 'false'
+  credentials: process.env.CORS_CREDENTIALS !== 'false',
+  maxAge: 86400
 }));
 
 // Add JSON body parsing middleware
@@ -144,4 +146,8 @@ server.start().then(() => {
         console.log(`CORS Headers: ${corsHeaders.join(', ')}`);
         console.log(`CORS Credentials: ${process.env.CORS_CREDENTIALS !== 'false'}`);
     })
+})
+
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Rejection:', reason)
 })

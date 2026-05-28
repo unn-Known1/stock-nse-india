@@ -99,7 +99,7 @@ export class MCPClient {
       }
       if (!this.validateApiKey(apiKey)) {
         throw new Error(
-          'OpenAI API key is invalid. Must start with "sk-" and be at least 20 characters. ' +
+          'API key is invalid. Ensure it is correctly configured. ' +
           'If you are using a compatible provider, also set OPENAI_BASE_URL.'
         )
       }

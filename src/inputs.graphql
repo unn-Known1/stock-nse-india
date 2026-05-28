@@ -10,4 +10,5 @@ input StringArrayFilter {
 
 input ObjectFilter {
   dummy: String
+  regex: String
 }

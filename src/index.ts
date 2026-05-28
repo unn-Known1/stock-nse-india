@@ -124,8 +124,8 @@ export class NseIndia {
     }
     private nseJar = new CookieJar()
     private chartingJar = new CookieJar()
-    private nseClient = wrapper(axios.create({ jar: this.nseJar }))
-    private chartingClient = wrapper(axios.create({ jar: this.chartingJar }))
+    private nseClient = wrapper(axios.create({ jar: this.nseJar, timeout: 30000 }))
+    private chartingClient = wrapper(axios.create({ jar: this.chartingJar, timeout: 30000 }))
     private userAgent = ''
     private chartingUserAgent = ''
     private readonly chartingBaseUrl = 'https://charting.nseindia.com'
