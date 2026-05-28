@@ -3,11 +3,11 @@
 
 # National Stock Exchange - India (Unofficial)
 
-![](https://github.com/hi-imcodeman/stock-nse-india/workflows/CI/badge.svg) ![npm](https://img.shields.io/npm/dt/stock-nse-india) ![NPM](https://img.shields.io/npm/l/stock-nse-india) ![GitHub Release Date - Published_At](https://img.shields.io/npm/v/stock-nse-india) ![GitHub top language](https://img.shields.io/github/languages/top/hi-imcodeman/stock-nse-india)
+![](https://github.com/unn-Known1/stock-nse-india/workflows/CI/badge.svg) ![npm](https://img.shields.io/npm/dt/stock-nse-india) ![NPM](https://img.shields.io/npm/l/stock-nse-india) ![GitHub Release Date - Published_At](https://img.shields.io/npm/v/stock-nse-india) ![GitHub top language](https://img.shields.io/github/languages/top/unn-Known1/stock-nse-india)
 
 A comprehensive package and API server for accessing equity/index details and historical data from the National Stock Exchange of India. Provides an NPM package, a full-featured REST/GraphQL API server, a CLI tool, and a browser dashboard.
 
-**📚 [Documentation](https://hi-imcodeman.github.io/stock-nse-india)** | **🚀 [Examples](https://github.com/hi-imcodeman/stock-nse-india/tree/master/examples)**
+**📚 [Documentation](https://unn-Known1.github.io/stock-nse-india)** | **🚀 [Examples](https://github.com/unn-Known1/stock-nse-india/tree/master/examples)**
 
 ## ✨ Features
 
@@ -37,7 +37,7 @@ const details = await nseIndia.getEquityDetails('IRCTC');
 ### As an API Server
 
 ```bash
-git clone https://github.com/hi-imcodeman/stock-nse-india.git
+git clone https://github.com/unn-Known1/stock-nse-india.git
 cd stock-nse-india
 npm install
 cp .env.example .env
@@ -76,7 +76,7 @@ cp .env.example .env
 ## 🏃‍♂️ Development
 
 ```bash
-git clone https://github.com/hi-imcodeman/stock-nse-india.git
+git clone https://github.com/unn-Known1/stock-nse-india.git
 cd stock-nse-india
 npm install
 npm run start:dev    # dev mode with auto-reload
@@ -114,16 +114,16 @@ MIT — see [LICENSE](LICENSE).
 
 ## 👥 Contributors
 
-<a href="https://github.com/hi-imcodeman/stock-nse-india/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=hi-imcodeman/stock-nse-india" />
+<a href="https://github.com/unn-Known1/stock-nse-india/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=unn-Known1/stock-nse-india" />
 </a>
 
 ## 🔗 Links
 
-- **🌐 [Website](https://hi-imcodeman.github.io/stock-nse-india)**
+- **🌐 [Website](https://unn-Known1.github.io/stock-nse-india)**
 - **📦 [NPM](https://www.npmjs.com/package/stock-nse-india)**
 - **🐳 [Docker Hub](https://hub.docker.com/r/imcodeman/nseindia)**
-- **🐛 [Issues](https://github.com/hi-imcodeman/stock-nse-india/issues)**
+- **🐛 [Issues](https://github.com/unn-Known1/stock-nse-india/issues)**
 
 ---
 
