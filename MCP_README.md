@@ -10,9 +10,25 @@ The fastest way to interact with the MCP server is through the built-in **AI Ass
 
 **Setup:**
 
-1. Add your OpenAI API key to `.env`:
-   ```
+1. Add your API key and provider config to `.env`:
+   ```env
+   # OpenAI
    OPENAI_API_KEY=sk-...
+
+   # — or — NVIDIA NIM (free tier at build.nvidia.com)
+   OPENAI_API_KEY=nvapi-...
+   OPENAI_BASE_URL=https://integrate.api.nvidia.com/v1
+   OPENAI_MODEL=moonshotai/kimi-k2-instruct
+
+   # — or — Groq (free tier)
+   OPENAI_API_KEY=gsk_...
+   OPENAI_BASE_URL=https://api.groq.com/openai/v1
+   OPENAI_MODEL=llama-3.3-70b-versatile
+
+   # — or — Ollama (local, no key needed)
+   OPENAI_API_KEY=ollama
+   OPENAI_BASE_URL=http://localhost:11434/v1
+   OPENAI_MODEL=llama3.1
    ```
 2. Start the server: `./launch.sh` (or `npm start`)
 3. Open `http://localhost:3000` and click **AI Assistant**
@@ -530,8 +546,17 @@ console.log('Total Summarizations:', history.length)
 
 - Node.js >= 18
 - TypeScript
-- OpenAI API key (for MCP Client with context summarization)
+- API key from OpenAI **or any OpenAI-compatible provider** (NVIDIA NIM, Groq, Ollama, LM Studio, vLLM, Together AI, …)
 - All dependencies listed in package.json
+
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | Yes | `sk-…` for OpenAI; provider-issued key for others (e.g. `nvapi-…` for NVIDIA NIM) |
+| `OPENAI_BASE_URL` | No | Base URL of an OpenAI-compatible API. Omit to use OpenAI. Example: `https://integrate.api.nvidia.com/v1` |
+| `OPENAI_MODEL` | No | Model ID the provider expects. Defaults to `gpt-4o-mini`. Example: `moonshotai/kimi-k2-instruct` |
+| `MCP_DEBUG_LOGGING` | No | Set `true` for verbose request/response logging (server restart required) |
 
 ## License
 

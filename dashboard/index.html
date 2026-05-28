@@ -361,12 +361,28 @@
       <div class="mcp-config-body">
         <div class="controls">
           <div class="control-group">
-            <label for="mcp-config-model">Model</label>
-            <select id="mcp-config-model">
-              <option value="gpt-4o-mini">GPT-4o Mini (fast, cheap)</option>
-              <option value="gpt-4o">GPT-4o (powerful)</option>
-              <option value="o3-mini">o3-mini (reasoning)</option>
-            </select>
+            <label for="mcp-config-model">Model <span style="font-weight:400;color:var(--text-secondary)">(env: OPENAI_MODEL)</span></label>
+            <input type="text" id="mcp-config-model" list="mcp-model-list" placeholder="gpt-4o-mini" style="width:220px">
+            <datalist id="mcp-model-list">
+              <option value="gpt-4o-mini">
+              <option value="gpt-4o">
+              <option value="o3-mini">
+              <option value="llama3">
+              <option value="llama3.1">
+              <option value="llama3.2">
+              <option value="mistral">
+              <option value="mixtral">
+              <option value="qwen2.5">
+              <option value="deepseek-r1">
+              <option value="gemma2">
+              <option value="phi4">
+              <option value="llama-3.1-8b-instant">
+              <option value="llama-3.3-70b-versatile">
+              <option value="gemma2-9b-it">
+              <option value="moonshotai/kimi-k2-instruct">
+              <option value="moonshotai/kimi-k2.6">
+              <option value="microsoft/phi-4">
+            </datalist>
           </div>
           <div class="control-group">
             <label for="mcp-config-temp">Temperature: <span id="mcp-temp-value">0.7</span></label>

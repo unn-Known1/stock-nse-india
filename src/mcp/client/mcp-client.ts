@@ -83,6 +83,9 @@ export class MCPClient {
   }
 
   private validateApiKey(key: string): boolean {
+    // When a custom base URL is set, any non-empty key is accepted (compatible providers
+    // use arbitrary key formats — e.g. "ollama", "EMPTY", or provider-specific tokens)
+    if (process.env.OPENAI_BASE_URL) return key.length > 0
     return /^sk-[A-Za-z0-9]{20,}$/.test(key)
   }
 
@@ -91,15 +94,17 @@ export class MCPClient {
       const apiKey = this.config.openaiApiKey || process.env.OPENAI_API_KEY
       if (!apiKey) {
         throw new Error(
-          'OpenAI API key not configured. Set OPENAI_API_KEY environment variable.'
+          'API key not configured. Set OPENAI_API_KEY environment variable.'
         )
       }
       if (!this.validateApiKey(apiKey)) {
         throw new Error(
-          'OpenAI API key is invalid. Must start with "sk-" and be at least 20 characters.'
+          'OpenAI API key is invalid. Must start with "sk-" and be at least 20 characters. ' +
+          'If you are using a compatible provider, also set OPENAI_BASE_URL.'
         )
       }
-      this.openaiClient = new OpenAI({ apiKey })
+      const baseURL = process.env.OPENAI_BASE_URL || undefined
+      this.openaiClient = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) })
     }
     return this.openaiClient
   }
@@ -197,7 +202,7 @@ export class MCPClient {
       query, 
       sessionId, 
       userId, 
-      model = 'gpt-4o-mini', 
+      model = process.env.OPENAI_MODEL || 'gpt-4o-mini', 
       temperature = 0.7, 
       max_tokens = 2000,
       includeContext = true,

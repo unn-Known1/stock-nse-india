@@ -110,7 +110,19 @@ Set these in `.env` before starting the server:
 
 | Variable | Required for AI tab | Description |
 |----------|--------------------|----|
-| `OPENAI_API_KEY` | Yes | OpenAI API key for AI Assistant queries |
+| `OPENAI_API_KEY` | Yes | API key — `sk-…` for OpenAI, or the key your provider issues (e.g. `nvapi-…` for NVIDIA NIM) |
+| `OPENAI_BASE_URL` | No | OpenAI-compatible base URL. Leave blank for OpenAI. Set for any other provider, e.g. `https://integrate.api.nvidia.com/v1` |
+| `OPENAI_MODEL` | No | Model ID the provider expects. Defaults to `gpt-4o-mini`. E.g. `moonshotai/kimi-k2-instruct`, `llama-3.3-70b-versatile` |
 | `MCP_DEBUG_LOGGING` | No | Set to `true` for verbose MCP logging (restart required) |
+
+### Compatible providers (no OpenAI account needed)
+
+| Provider | `OPENAI_BASE_URL` | Example model |
+|----------|-------------------|---------------|
+| **NVIDIA NIM** (free tier) | `https://integrate.api.nvidia.com/v1` | `moonshotai/kimi-k2-instruct` |
+| **Groq** (free tier) | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
+| **Ollama** (local) | `http://localhost:11434/v1` | `llama3.1` |
+| **LM Studio** (local) | `http://localhost:1234/v1` | *(whatever you loaded)* |
+| **Together AI** | `https://api.together.xyz/v1` | `meta-llama/Llama-3-70b-chat-hf` |
 
 All other variables (`PORT`, `CORS_ORIGINS`, etc.) are documented in the root [README](../README.md).

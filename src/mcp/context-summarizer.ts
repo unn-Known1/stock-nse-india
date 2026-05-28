@@ -176,7 +176,7 @@ Format as JSON with these fields: summary, keyPoints, importantStocks, important
 
     try {
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',

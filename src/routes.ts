@@ -11,6 +11,9 @@ import { TechnicalIndicatorOptions } from './interface'
 import { formatLatestIndicators, formatAllIndicators } from './indicators-formatter'
 
 function validateApiKey(key: string): boolean {
+    // When a custom base URL is configured, any non-empty key is valid (compatible
+    // providers such as Ollama, LM Studio, vLLM, Groq, etc. use arbitrary key formats)
+    if (process.env.OPENAI_BASE_URL) return key.length > 0
     return /^sk-[A-Za-z0-9]{20,}$/.test(key)
 }
 
@@ -1454,12 +1457,12 @@ mainRouter.post('/api/mcp/query', async (req, res) => {
         const apiKey = process.env.OPENAI_API_KEY
         if (!apiKey) {
             return res.status(500).json({
-                error: 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+                error: 'API key not configured. Please set OPENAI_API_KEY environment variable.'
             })
         }
         if (!validateApiKey(apiKey)) {
             return res.status(500).json({
-                error: 'OpenAI API key is invalid. Must start with "sk-" and be at least 20 characters.'
+                error: 'API key is invalid. For OpenAI, it must start with "sk-". For compatible providers, also set OPENAI_BASE_URL.'
             })
         }
 
@@ -1573,14 +1576,16 @@ mainRouter.get('/api/mcp/test', async (_req, res) => {
         if (!testApiKey) {
             return res.status(500).json({
                 status: 'error',
-                message: 'OpenAI API key not configured',
+                message: 'API key not configured. Set OPENAI_API_KEY environment variable.',
+                openaiConfigured: false,
                 timestamp: new Date().toISOString()
             })
         }
         if (!validateApiKey(testApiKey)) {
             return res.status(500).json({
                 status: 'error',
-                message: 'OpenAI API key is invalid. Must start with "sk-" and be at least 20 characters.',
+                message: 'API key is invalid. For OpenAI use an sk- key; for compatible providers also set OPENAI_BASE_URL.',
+                openaiConfigured: false,
                 timestamp: new Date().toISOString()
             })
         }
@@ -1589,13 +1594,17 @@ mainRouter.get('/api/mcp/test', async (_req, res) => {
 
         if (isConnected) {
             res.json({
-                status: 'success',
+                status: 'ok',
+                openaiConfigured: true,
+                baseURL: process.env.OPENAI_BASE_URL || null,
+                model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
                 message: 'MCP client is working correctly',
                 timestamp: new Date().toISOString()
             })
         } else {
             res.status(500).json({
                 status: 'error',
+                openaiConfigured: true,
                 message: 'MCP client test failed',
                 timestamp: new Date().toISOString()
             })
