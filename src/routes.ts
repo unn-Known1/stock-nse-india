@@ -1,14 +1,14 @@
 import { Router } from 'express'
-import { openapiSpecification } from './swaggerDocOptions'
-import { NseIndia, ApiList } from './index'
+import { openapiSpecification } from './swaggerDocOptions.js'
+import { NseIndia, ApiList } from './index.js'
 import {
     getGainersAndLosersByIndex,
     getMostActiveEquities
-} from './helpers'
+} from './helpers.js'
 import { getMcpClient, MCPClientRequest, MCPClient } from './mcp/client/mcp-client.js'
-import { sendRouteError } from './route-errors'
-import { TechnicalIndicatorOptions } from './interface'
-import { formatLatestIndicators, formatAllIndicators } from './indicators-formatter'
+import { sendRouteError } from './route-errors.js'
+import { TechnicalIndicatorOptions } from './interface.js'
+import { formatLatestIndicators, formatAllIndicators } from './indicators-formatter.js'
 
 function validateApiKey(key: string): boolean {
     if (process.env.OPENAI_BASE_URL) return key.length >= 8

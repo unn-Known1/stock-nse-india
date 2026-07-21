@@ -1,4 +1,4 @@
-import { NseIndia } from './index'
+import { NseIndia } from './index.js'
 
 describe('NseIndia charting API tests', () => {
     test('getChartingCookies refreshes and then reuses cached cookies', async () => {

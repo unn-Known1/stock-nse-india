@@ -1,4 +1,4 @@
-import { TechnicalIndicators } from './interface'
+import { TechnicalIndicators } from './interface.js'
 
 export function roundTo2Decimals(value: number | null | undefined): number | null {
   return value != null ? Math.round(value * 100) / 100 : null

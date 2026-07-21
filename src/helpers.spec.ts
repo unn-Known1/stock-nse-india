@@ -1,6 +1,6 @@
-import { NseIndia } from './index'
-import { getGainersAndLosersByIndex, getMostActiveEquities } from './helpers'
-import { getTechnicalIndicators } from './helpers'
+import { NseIndia } from './index.js'
+import { getGainersAndLosersByIndex, getMostActiveEquities } from './helpers.js'
+import { getTechnicalIndicators } from './helpers.js'
 
 describe('Helpers (mocked)', () => {
     const indexEquities = [

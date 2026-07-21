@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable no-console */
-import { NseIndia, ApiList } from '../index'
+import { NseIndia, ApiList } from '../index.js'
 import ora from 'ora'
 import chalk from 'chalk'
 import ohlc from 'ohlc'
 import moment from 'moment'
 import asciichart from 'asciichart'
-import type { IndexEquityInfo } from '../interface'
+import type { IndexEquityInfo } from '../interface.js'
 
 const rupee = '₹'
 const nse = new NseIndia()

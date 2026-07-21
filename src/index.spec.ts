@@ -1,5 +1,5 @@
-import { NseIndia, ApiList } from './index'
-import quoteEquityFixture from './__fixtures__/nse/quote-equity-tcs.json'
+import { NseIndia, ApiList } from './index.js'
+import quoteEquityFixture from './__fixtures__/nse/quote-equity-tcs.json.js'
 import axios from 'axios'
 
 describe('Class: NseIndia (mocked)', () => {

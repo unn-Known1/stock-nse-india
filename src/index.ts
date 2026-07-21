@@ -4,7 +4,7 @@ import { CookieJar } from 'tough-cookie'
 import https from 'https'
 import http from 'http'
 import UserAgent from 'user-agents'
-import { getDateRangeChunks, sleep } from './utils'
+import { getDateRangeChunks, sleep } from './utils.js'
 
 http.globalAgent = new http.Agent({ keepAlive: true, maxSockets: 10 })
 https.globalAgent = new https.Agent({ keepAlive: true, maxSockets: 10 })
@@ -40,7 +40,7 @@ import {
     mapPreOpenRowToEquityTradeInfo,
     mapQuoteEquityResponse,
     mapQuoteEquityTradeInfoResponse
-} from './equity-mappers'
+} from './equity-mappers.js'
 import {
     DateRange,
     IntradayData,
@@ -90,7 +90,7 @@ import {
     PreOpenDetails,
     OptionsData,
     OptionsDetails
-} from './interface'
+} from './interface.js'
 
 export enum ApiList {
     GLOSSARY = '/api/cmsContent?url=/glossary',
@@ -1142,7 +1142,7 @@ export class NseIndia {
             momentumPeriod?: number
         } = {}
     ): Promise<TechnicalIndicators> {
-        const { getTechnicalIndicators } = await import('./helpers')
+        const { getTechnicalIndicators } = await import('./helpers.js')
         return getTechnicalIndicators(symbol, period, options)
     }
 }

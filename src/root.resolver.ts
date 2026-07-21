@@ -1,6 +1,6 @@
 import DataLoader from 'dataloader'
-import { ApiList, NseIndia } from './index'
-import { EquityDetails } from './interface'
+import { ApiList, NseIndia } from './index.js'
+import { EquityDetails } from './interface.js'
 
 const nseIndia = new NseIndia()
 

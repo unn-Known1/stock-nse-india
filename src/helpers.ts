@@ -1,5 +1,5 @@
-import { NseIndia } from './index'
-import { IndexEquityInfo, TechnicalIndicators, TechnicalIndicatorOptions, EquityHistoricalInfo } from './interface'
+import { NseIndia } from './index.js'
+import { IndexEquityInfo, TechnicalIndicators, TechnicalIndicatorOptions, EquityHistoricalInfo } from './interface.js'
 import * as indicators from 'indicatorts'
 
 const nseIndia = new NseIndia()
