@@ -12,9 +12,9 @@ import { loadSchemaSync } from '@graphql-tools/load'
 import { loadFilesSync } from '@graphql-tools/load-files'
 import { mergeTypeDefs, mergeResolvers } from '@graphql-tools/merge'
 import { GraphQLFileLoader } from '@graphql-tools/graphql-file-loader'
-import { openapiSpecification } from './swaggerDocOptions'
+import { openapiSpecification } from './swaggerDocOptions.js'
 import path from 'path';
-import { mainRouter } from './routes'
+import { mainRouter } from './routes.js'
 import cors from 'cors';
 
 function validateConfig(): void {

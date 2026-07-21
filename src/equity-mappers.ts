@@ -5,7 +5,7 @@ import {
     EquityTradeInfo,
     IntradayData,
     PreOpenMarketData
-} from './interface'
+} from './interface.js'
 
 type PreOpenRow = PreOpenMarketData['data'][number]
 

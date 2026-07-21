@@ -1,7 +1,7 @@
 import {
     getGainersAndLosersByIndex,
     getMostActiveEquities
-} from './helpers'
+} from './helpers.js'
 
 describe('Helpers (live NSE e2e)', () => {
     test('getGainersAndLosersByIndex', async () => {

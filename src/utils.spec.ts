@@ -1,4 +1,4 @@
-import { getDataSchema, getDateRangeChunks, sleep } from './utils'
+import { getDataSchema, getDateRangeChunks, sleep } from './utils.js'
 describe('Utils', () => {
     const data={
         a: 1,

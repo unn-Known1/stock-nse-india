@@ -1,4 +1,4 @@
-import { NseIndia } from './index'
+import { NseIndia } from './index.js'
 
 describe('NseIndia session cookies', () => {
     test('ensureNseSession bootstraps from homepage and merges multiple cookies', async () => {

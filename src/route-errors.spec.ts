@@ -1,5 +1,5 @@
 import { Response } from 'express'
-import { errorMessage, httpStatusFromError, sendRouteError } from './route-errors'
+import { errorMessage, httpStatusFromError, sendRouteError } from './route-errors.js'
 
 describe('route-errors', () => {
     test('errorMessage handles Error, string, object, and circular refs', () => {

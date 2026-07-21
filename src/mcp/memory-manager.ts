@@ -1,5 +1,5 @@
 import * as fs from 'fs'
-import { ContextSummarizer, ContextSummary, ContextWindowConfig } from './context-summarizer'
+import { ContextSummarizer, ContextSummary, ContextWindowConfig } from './context-summarizer.js'
 import OpenAI from 'openai'
 
 export interface ConversationMessage {

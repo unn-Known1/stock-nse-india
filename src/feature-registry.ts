@@ -1,6 +1,6 @@
-import type { NseIndia } from './index'
-import { getGainersAndLosersByIndex, getMostActiveEquities } from './helpers'
-import { formatLatestIndicators, formatAllIndicators } from './indicators-formatter'
+import type { NseIndia } from './index.js'
+import { getGainersAndLosersByIndex, getMostActiveEquities } from './helpers.js'
+import { formatLatestIndicators, formatAllIndicators } from './indicators-formatter.js'
 
 export interface FeatureEntry {
   name: string

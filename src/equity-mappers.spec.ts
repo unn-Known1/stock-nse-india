@@ -1,5 +1,5 @@
-import quoteEquityFixture from './__fixtures__/nse/quote-equity-tcs.json'
-import preOpenRowFixture from './__fixtures__/nse/preopen-tcs-row.json'
+import quoteEquityFixture from './__fixtures__/nse/quote-equity-tcs.json.js'
+import preOpenRowFixture from './__fixtures__/nse/preopen-tcs-row.json.js'
 import {
     applyEquityDetailsEnrichment,
     equityRefererSymbol,
@@ -13,7 +13,7 @@ import {
     mapPreOpenRowToEquityTradeInfo,
     mapQuoteEquityResponse,
     mapQuoteEquityTradeInfoResponse
-} from './equity-mappers'
+} from './equity-mappers.js'
 
 describe('equity-mappers', () => {
     test('isEquityDetailsShape accepts quote-equity fixture', () => {

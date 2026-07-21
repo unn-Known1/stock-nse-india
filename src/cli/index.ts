@@ -7,7 +7,7 @@ import {
     showMarketStatus,
     showIndexDetails,
     showIndexOverview
-} from './api'
+} from './api.js'
 import yargs from 'yargs'
 import type { Argv, ArgumentsCamelCase } from 'yargs'
 import { MCPServer } from '../mcp/server/mcp-server.js'
